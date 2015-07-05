@@ -200,22 +200,24 @@ class WgetArgs(object):
         
         if item_type == '36comments':
             suffixes = string.digits + string.ascii_lowercase
-            for suffix in suffixes:
-                commenturl = 'https://www.reddit.com/comments/{0}{1}/'.format(item_value, suffix)
-                html = requests.get(commenturl, headers={'User-Agent': 'ArchiveTeam'})
-                print('Downloaded', html.status_code, getattr(html, 'reason'))
-                sys.stdout.flush()
-                if html.status_code == 200:
-                    if not html.text:
-                        raise Exception('Something went wrong during the download. ({0})'.format(html.status_code))
-                    else:
-                        for origurl in re.findall(r'href="(https?:\/\/www\.reddit\.com\/r\/[^/]+\/comments\/{0}{1}\/[^"]+)"'.format(item_value, suffix), html.text):
-                            if (re.search(r'https?:\/\/www\.reddit\.com\/r\/[^/]+\/comments\/[^/]+\/[^/]+\/', origurl) or re.search(r'https?:\/\/www\.reddit\.com\/r\/[^/]+\/comments\/[^/]+\/', origurl)) and not re.search(r'https?:\/\/www\.reddit\.com\/r\/[^/]+\/comments\/[^/]+\/[^/]+\/.', origurl):
-                                wget_args.append(origurl)
-                elif html.status_code == 404:
-                    print('This url is 404.')
-                else:
-                    raise Exception('Something went wrong during the download. ({0})'.format(html.status_code))
+            for url in ['http://redd.it/{0}{1}'.format(item_value, a) for a in suffixes]:
+                wget_args.append(url)
+#            for suffix in suffixes:
+#                commenturl = 'https://www.reddit.com/comments/{0}{1}/'.format(item_value, suffix)
+#                html = requests.get(commenturl, headers={'User-Agent': 'ArchiveTeam'})
+#                print('Downloaded', html.status_code, getattr(html, 'reason'))
+#                sys.stdout.flush()
+#                if html.status_code == 200:
+#                    if not html.text:
+#                        raise Exception('Something went wrong during the download. ({0})'.format(html.status_code))
+#                    else:
+#                        for origurl in re.findall(r'href="(https?:\/\/www\.reddit\.com\/r\/[^/]+\/comments\/{0}{1}\/[^"]+)"'.format(item_value, suffix), html.text):
+#                            if (re.search(r'https?:\/\/www\.reddit\.com\/r\/[^/]+\/comments\/[^/]+\/[^/]+\/', origurl) or re.search(r'https?:\/\/www\.reddit\.com\/r\/[^/]+\/comments\/[^/]+\/', origurl)) and not re.search(r'https?:\/\/www\.reddit\.com\/r\/[^/]+\/comments\/[^/]+\/[^/]+\/.', origurl):
+#                                wget_args.append(origurl)
+#                elif html.status_code == 404:
+#                    print('This url is 404.')
+#                else:
+#                    raise Exception('Something went wrong during the download. ({0})'.format(html.status_code))
         else:
             raise Exception('Unknown item')
         
