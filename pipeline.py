@@ -169,6 +169,7 @@ class WgetArgs(object):
             "-U", USER_AGENT,
             "-nv",
             "--lua-script", "reddit.lua",
+            "--load-cookies", "cookies",
             "-o", ItemInterpolation("%(item_dir)s/wget.log"),
             "--no-check-certificate",
             "--output-document", ItemInterpolation("%(item_dir)s/wget.tmp"),
