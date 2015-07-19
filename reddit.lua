@@ -9,6 +9,15 @@ local item_value = os.getenv('item_value')
 local downloaded = {}
 local addedtolist = {}
 
+-- Do not download these urls:
+downloaded["http://pixel.redditmedia.com/pixel/of_destiny.png?v=q1Ga4BM4n71zceWwjRg4266wx1BqgGjx8isnnrLeBUv%2FXq%2Bk60QeBpQruPDKFQFv%2FDWVNxp63YPBIKv8pMk%2BhrkV3HA5b7GO"] = true
+downloaded["http://pixel.redditmedia.com/pixel/of_doom.png"] = true
+downloaded["http://pixel.redditmedia.com/pixel/of_delight.png"] = true
+downloaded["http://pixel.redditmedia.com/pixel/of_discovery.png"] = true
+downloaded["http://pixel.redditmedia.com/pixel/of_diversity.png"] = true
+downloaded["http://pixel.redditmedia.com/click"] = true
+downloaded["https://stats.redditmedia.com/"] = true
+
 read_file = function(file)
   if file then
     local f = assert(io.open(file))
@@ -23,17 +32,20 @@ end
 wget.callbacks.download_child_p = function(urlpos, parent, depth, start_url_parsed, iri, verdict, reason)
   local url = urlpos["url"]["url"]
   local html = urlpos["link_expect_html"]
-  
+
   if downloaded[url] == true or addedtolist[url] == true then
     return false
   end
   
   if (downloaded[url] ~= true or addedtolist[url] ~= true) then
-    if (string.match(url, "[^a-z0-9]"..item_value.."[0-9a-z]") and not string.match(url, "[^a-z0-9]"..item_value.."[0-9a-z][0-9a-z]")) or html == 0 then
+    if string.match(url, "[^a-z0-9]"..item_value.."[0-9a-z]") and not (string.match(url, "[^a-z0-9]"..item_value.."[0-9a-z][0-9a-z]") or string.match(url, "%?sort=") or string.match(url, "%?ref=") or string.match(url, "%?count=") or string.match(url, "%.rss") or string.match(url, "%?originalUrl=") or string.match(url, "m%.reddit%.com") or string.match(url, "thumbs%.redditmedia%.com")) then
+      addedtolist[url] = true
       return true
     else
       return false
     end
+  else
+    return false
   end
 end
 
@@ -47,15 +59,15 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
   end
  
   local function check(url)
-    if (downloaded[url] ~= true and addedtolist[url] ~= true) and (string.match(url, "[^a-z0-9]"..item_value.."[0-9a-z]") or string.match(url, "redditmedia%.com")) and not string.match(url, "[^a-z0-9]"..item_value.."[0-9a-z][0-9a-z]") then
+    if (downloaded[url] ~= true and addedtolist[url] ~= true) and (string.match(url, "[^a-z0-9]"..item_value.."[0-9a-z]") or (string.match(url, "redditmedia%.com")) and not (string.match(url, "[^a-z0-9]"..item_value.."[0-9a-z][0-9a-z]") or string.match(url, "thumbs%.redditmedia%.com") or string.match(url, "%?sort=") or string.match(url, "%?ref=")  or string.match(url, "%?count=") or string.match(url, "%.rss") or string.match(url, "%?originalUrl=") or string.match(url, "m%.reddit%.com")) then
       if string.match(url, "&amp;") then
         table.insert(urls, { url=string.gsub(url, "&amp;", "&") })
         addedtolist[url] = true
         addedtolist[string.gsub(url, "&amp;", "&")] = true
       elseif string.match(url, "#") then
-        table.insert(urls, { url=string.match(url, "(https?:[^#]+)#") })
+        table.insert(urls, { url=string.match(url, "(https?//:[^#]+)#") })
         addedtolist[url] = true
-        addedtolist[string.match(url, "(https?:[^#]+)#")] = true
+        addedtolist[string.match(url, "(https?//:[^#]+)#")] = true
       else
         table.insert(urls, { url=url })
         addedtolist[url] = true
@@ -63,8 +75,14 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     end
   end
   
-  if string.match(url, "[^a-z0-9]"..item_value.."[0-9a-z]") and not string.match(url, "[^a-z0-9]"..item_value.."[0-9a-z][0-9a-z]") then
+  if string.match(url, "[^a-z0-9]"..item_value.."[0-9a-z]") and not (string.match(url, "[^a-z0-9]"..item_value.."[0-9a-z][0-9a-z]") or string.match(url, "/related/"..item_value)) then
     html = read_file(file)
+    for newurl in string.gmatch(html, '"thumbnail[^"]+"[^"]+"[^"]+"[^"]+"(//[^"]+)"') do
+      if downloaded[string.gsub(newurl, "//", "http://")] ~= true and addedtolist[string.gsub(newurl, "//", "http://")] ~= true then
+        table.insert(urls, { url=string.gsub(newurl, "//", "http://") })
+        addedtolist[string.gsub(newurl, "//", "http://")] = true
+      end
+    end
     for newurl in string.gmatch(html, '"(https?://[^"]+)"') do
       check(newurl)
     end
@@ -123,7 +141,11 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
       io.stdout:write("\nI give up...\n")
       io.stdout:flush()
       tries = 0
-      return wget.actions.ABORT
+      if string.match(url["url"], "[^a-z0-9]"..item_value.."[0-9a-z]") and not string.match(url["url"], "[^a-z0-9]"..item_value.."[0-9a-z][0-9a-z]") then
+        return wget.actions.ABORT
+      else
+        return wget.actions.EXIT
+      end
     else
       return wget.actions.CONTINUE
     end
