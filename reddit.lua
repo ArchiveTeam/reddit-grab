@@ -1,22 +1,32 @@
-dofile("urlcode.lua")
 dofile("table_show.lua")
+dofile("urlcode.lua")
+JSON = (loadfile "JSON.lua")()
+
+local item_type = os.getenv('item_type')
+local item_value = os.getenv('item_value')
+local item_dir = os.getenv('item_dir')
+local warc_file_base = os.getenv('warc_file_base')
 
 local url_count = 0
 local tries = 0
-local item_type = os.getenv('item_type')
-local item_value = os.getenv('item_value')
-
 local downloaded = {}
 local addedtolist = {}
+local abortgrab = false
 
--- Do not download these urls:
-downloaded["http://pixel.redditmedia.com/pixel/of_destiny.png?v=q1Ga4BM4n71zceWwjRg4266wx1BqgGjx8isnnrLeBUv%2FXq%2Bk60QeBpQruPDKFQFv%2FDWVNxp63YPBIKv8pMk%2BhrkV3HA5b7GO"] = true
-downloaded["http://pixel.redditmedia.com/pixel/of_doom.png"] = true
-downloaded["http://pixel.redditmedia.com/pixel/of_delight.png"] = true
-downloaded["http://pixel.redditmedia.com/pixel/of_discovery.png"] = true
-downloaded["http://pixel.redditmedia.com/pixel/of_diversity.png"] = true
-downloaded["http://pixel.redditmedia.com/click"] = true
-downloaded["https://stats.redditmedia.com/"] = true
+local posts = {}
+local requested_children = {}
+
+for ignore in io.open("ignore-list", "r"):lines() do
+  downloaded[ignore] = true
+end
+
+load_json_file = function(file)
+  if file then
+    return JSON:decode(file)
+  else
+    return nil
+  end
+end
 
 read_file = function(file)
   if file then
@@ -29,141 +39,218 @@ read_file = function(file)
   end
 end
 
+allowed = function(url, parenturl)
+  if string.match(url, "'+")
+      or string.match(url, "[<>\\%*%$;%^%[%],%(%){}]")
+      or string.match(url, "^https?://[^/]*reddit%.com/login")
+      or string.match(url, "^https?://[^/]*reddit%.com/register")
+      or string.match(url, "%?sort=")
+      or string.match(url, "^https?://www%.reddit%.com/") --TEMP
+      or string.match(url, "/%.rss$") then
+    return false
+  end
+
+  local tested = {}
+  for s in string.gmatch(url, "([^/]+)") do
+    if tested[s] == nil then
+      tested[s] = 0
+    end
+    if tested[s] == 6 then
+      return false
+    end
+    tested[s] = tested[s] + 1
+  end
+
+  if url .. "/" == parenturl then
+    return false
+  end
+
+  if string.match(url, "^https?://i%.redd%.it/")
+      or string.match(url, "^https?://[^/]*redditmedia%.com/")
+      or string.match(url, "^https://old.reddit.com/api/morechildren$") then
+    return true
+  end
+
+  for s in string.gmatch(url, "([a-z0-9]+)") do
+    if posts[s] then
+      return true
+    end
+  end
+  
+  return false
+end
+
 wget.callbacks.download_child_p = function(urlpos, parent, depth, start_url_parsed, iri, verdict, reason)
   local url = urlpos["url"]["url"]
   local html = urlpos["link_expect_html"]
 
-  if downloaded[url] == true or addedtolist[url] == true then
+  if string.match(url, "[<>\\%*%$;%^%[%],%(%){}]") then
     return false
+  end
+
+  if (downloaded[url] ~= true and addedtolist[url] ~= true)
+      and (allowed(url, parent["url"]) or html == 0) then
+    addedtolist[url] = true
+    return true
   end
   
-  if (downloaded[url] ~= true or addedtolist[url] ~= true) then
-    if string.match(url, "[^a-z0-9]"..item_value.."[0-9a-z]") and not (string.match(url, "[^a-z0-9]"..item_value.."[0-9a-z][0-9a-z]") or string.match(url, "%?sort=") or string.match(url, "%?ref=") or string.match(url, "%?count=") or string.match(url, "%.rss") or string.match(url, "%?originalUrl=") or string.match(url, "m%.reddit%.com") or string.match(url, "thumbs%.redditmedia%.com")) then
-      addedtolist[url] = true
-      return true
-    else
-      return false
-    end
-  else
-    return false
-  end
+  return false
 end
-
 
 wget.callbacks.get_urls = function(file, url, is_css, iri)
   local urls = {}
   local html = nil
+  
+  downloaded[url] = true
 
-  if downloaded[url] ~= true then
-    downloaded[url] = true
-  end
- 
-  local function check(url)
-    if (downloaded[url] ~= true and addedtolist[url] ~= true) and (string.match(url, "[^a-z0-9]"..item_value.."[0-9a-z]") or (string.match(url, "redditmedia%.com")) and not (string.match(url, "[^a-z0-9]"..item_value.."[0-9a-z][0-9a-z]") or string.match(url, "thumbs%.redditmedia%.com") or string.match(url, "%?sort=") or string.match(url, "%?ref=")  or string.match(url, "%?count=") or string.match(url, "%.rss") or string.match(url, "%?originalUrl=") or string.match(url, "m%.reddit%.com")) then
-      if string.match(url, "&amp;") then
-        table.insert(urls, { url=string.gsub(url, "&amp;", "&") })
-        addedtolist[url] = true
-        addedtolist[string.gsub(url, "&amp;", "&")] = true
-      elseif string.match(url, "#") then
-        table.insert(urls, { url=string.match(url, "(https?//:[^#]+)#") })
-        addedtolist[url] = true
-        addedtolist[string.match(url, "(https?//:[^#]+)#")] = true
-      else
-        table.insert(urls, { url=url })
-        addedtolist[url] = true
-      end
+  local function check(urla)
+    local origurl = url
+    local url = string.match(urla, "^([^#]+)")
+    local url_ = string.gsub(url, "&amp;", "&")
+    if (downloaded[url_] ~= true and addedtolist[url_] ~= true)
+        and allowed(url_, origurl) then
+      table.insert(urls, { url=url_ })
+      addedtolist[url_] = true
+      addedtolist[url] = true
     end
   end
-  
-  if string.match(url, "[^a-z0-9]"..item_value.."[0-9a-z]") and not (string.match(url, "[^a-z0-9]"..item_value.."[0-9a-z][0-9a-z]") or string.match(url, "/related/"..item_value)) then
+
+  local function checknewurl(newurl)
+    if string.match(newurl, "^https?:////") then
+      check(string.gsub(newurl, ":////", "://"))
+    elseif string.match(newurl, "^https?://") then
+      check(newurl)
+    elseif string.match(newurl, "^https?:\\/\\?/") then
+      check(string.gsub(newurl, "\\", ""))
+    elseif string.match(newurl, "^\\/\\/") then
+      check(string.match(url, "^(https?:)")..string.gsub(newurl, "\\", ""))
+    elseif string.match(newurl, "^//") then
+      check(string.match(url, "^(https?:)")..newurl)
+    elseif string.match(newurl, "^\\/") then
+      check(string.match(url, "^(https?://[^/]+)")..string.gsub(newurl, "\\", ""))
+    elseif string.match(newurl, "^/") then
+      check(string.match(url, "^(https?://[^/]+)")..newurl)
+    elseif string.match(newurl, "^%./") then
+      checknewurl(string.match(newurl, "^%.(.+)"))
+    end
+  end
+
+  local function checknewshorturl(newurl)
+    if string.match(newurl, "^%?") then
+      check(string.match(url, "^(https?://[^%?]+)")..newurl)
+    elseif not (string.match(newurl, "^https?:\\?/\\?//?/?")
+        or string.match(newurl, "^[/\\]")
+        or string.match(newurl, "^%./")
+        or string.match(newurl, "^[jJ]ava[sS]cript:")
+        or string.match(newurl, "^[mM]ail[tT]o:")
+        or string.match(newurl, "^vine:")
+        or string.match(newurl, "^android%-app:")
+        or string.match(newurl, "^ios%-app:")
+        or string.match(newurl, "^%${")) then
+      check(string.match(url, "^(https?://.+/)")..newurl)
+    end
+  end
+
+  if string.match(url, "^https?://www%.reddit%.com/comments/[a-z0-9]+$")
+      or string.match(url, "^https?://old%.reddit%.com/comments/[a-z0-9]+$") then
+    posts[string.match(url, "[a-z0-9]+$")] = true
+  end
+
+  if allowed(url, nil)
+      and not string.match(url, "^https?://[^/]*redditmedia%.com/")
+      and not string.match(url, "^https?://[^/]*redditstatic%.com/") then
     html = read_file(file)
-    for newurl in string.gmatch(html, '"thumbnail[^"]+"[^"]+"[^"]+"[^"]+"(//[^"]+)"') do
-      if downloaded[string.gsub(newurl, "//", "http://")] ~= true and addedtolist[string.gsub(newurl, "//", "http://")] ~= true then
-        table.insert(urls, { url=string.gsub(newurl, "//", "http://") })
-        addedtolist[string.gsub(newurl, "//", "http://")] = true
+    if string.match(url, "^https://old.reddit.com/api/morechildren$") then
+      html = string.gsub(html, '\\"', '"')
+    end
+    if string.match(url, "^https?://old%.reddit%.com/") then
+      for s in string.gmatch(html, "(return%s+morechildren%(this,%s*'[^']+',%s*'[^']+',%s*'[^']+',%s*[0-9]+,%s*'[^']+'%))") do
+        local link_id, sort, children, depth, limit_children = string.match(s, "%(this,%s*'([^']+)',%s*'([^']+)',%s*'([^']+)',%s*([0-9]+),%s*'([^']+)'%)$")
+        local id = string.match(children, "^([^,]+)")
+        local subreddit = string.match(html, 'data%-subreddit="([^"]+)"')
+        local post_data = "link_id=" .. link_id .. "&sort=" .. sort .. "&children=" .. string.gsub(children, ",", "%%2C") .. "&depth=" .. depth .. "&id=t1_" .. id .. "&limit_children=" .. limit_children .. "&r=" .. subreddit .. "&renderstyle=html"
+        if requested_children[post_data] == nil then
+          requested_children[post_data] = true
+          table.insert(urls, {url="https://old.reddit.com/api/morechildren",
+                              post_data=post_data})
+        end
       end
     end
-    for newurl in string.gmatch(html, '"(https?://[^"]+)"') do
-      check(newurl)
+    for newurl in string.gmatch(string.gsub(html, "&quot;", '"'), '([^"]+)') do
+      checknewurl(newurl)
     end
-    for newurl in string.gmatch(html, "'(https?://[^']+)'") do
-      check(newurl)
+    for newurl in string.gmatch(string.gsub(html, "&#039;", "'"), "([^']+)") do
+      checknewurl(newurl)
     end
-    for newurl in string.gmatch(html, '("/[^"]+)"') do
-      if string.match(newurl, '"//') then
-        check(string.gsub(newurl, '"//', 'http://'))
-      elseif not string.match(newurl, '"//') then
-        check(string.match(url, "(https?://[^/]+)/")..string.match(newurl, '"(/.+)'))
-      end
+    for newurl in string.gmatch(html, ">%s*([^<%s]+)") do
+      checknewurl(newurl)
     end
-    for newurl in string.gmatch(html, "('/[^']+)'") do
-      if string.match(newurl, "'//") then
-        check(string.gsub(newurl, "'//", "http://"))
-      elseif not string.match(newurl, "'//") then
-        check(string.match(url, '(https?://[^/]+)/')..string.match(newurl, "'(/.+)"))
-      end
+    for newurl in string.gmatch(html, "[^%-]href='([^']+)'") do
+      checknewshorturl(newurl)
+    end
+    for newurl in string.gmatch(html, '[^%-]href="([^"]+)"') do
+      checknewshorturl(newurl)
+    end
+    for newurl in string.gmatch(html, ":%s*url%(([^%)]+)%)") do
+      checknewurl(newurl)
     end
   end
-  
+
   return urls
 end
-  
 
 wget.callbacks.httploop_result = function(url, err, http_stat)
-  -- NEW for 2014: Slightly more verbose messages because people keep
-  -- complaining that it's not moving or not working
   status_code = http_stat["statcode"]
   
   url_count = url_count + 1
-  io.stdout:write(url_count .. "=" .. status_code .. " " .. url["url"] .. ".  \n")
+  io.stdout:write(url_count .. "=" .. status_code .. " " .. url["url"] .. "  \n")
   io.stdout:flush()
 
-  if (status_code >= 200 and status_code <= 399) then
-    if string.match(url.url, "https://") then
-      local newurl = string.gsub(url.url, "https://", "http://")
-      downloaded[newurl] = true
-    else
-      downloaded[url.url] = true
+  if (status_code >= 300 and status_code <= 399) then
+    local newloc = string.match(http_stat["newloc"], "^([^#]+)")
+    if string.match(newloc, "^//") then
+      newloc = string.match(url["url"], "^(https?:)") .. string.match(newloc, "^//(.+)")
+    elseif string.match(newloc, "^/") then
+      newloc = string.match(url["url"], "^(https?://[^/]+)") .. newloc
+    elseif not string.match(newloc, "^https?://") then
+      newloc = string.match(url["url"], "^(https?://.+/)") .. newloc
+    end
+    if downloaded[newloc] == true or addedtolist[newloc] == true then
+      return wget.actions.EXIT
     end
   end
   
-  if status_code >= 500 or
-    (status_code >= 400 and status_code ~= 404 and status_code ~= 403) then
+  if (status_code >= 200 and status_code <= 399) then
+    downloaded[url["url"]] = true
+    downloaded[string.gsub(url["url"], "https?://", "http://")] = true
+  end
 
-    io.stdout:write("\nServer returned "..http_stat.statcode..". Sleeping.\n")
+  if abortgrab == true then
+    io.stdout:write("ABORTING...\n")
+    return wget.actions.ABORT
+  end
+  
+  if status_code >= 500
+      or (status_code >= 400 and status_code ~= 403 and status_code ~= 404)
+      or status_code  == 0 then
+    io.stdout:write("Server returned "..http_stat.statcode.." ("..err.."). Sleeping.\n")
     io.stdout:flush()
-
-    os.execute("sleep 10")
-
-    tries = tries + 1
-
-    if tries >= 6 then
+    local maxtries = 8
+    if not allowed(url["url"], nil) then
+        maxtries = 2
+    end
+    if tries > maxtries then
       io.stdout:write("\nI give up...\n")
       io.stdout:flush()
       tries = 0
-      if string.match(url["url"], "[^a-z0-9]"..item_value.."[0-9a-z]") and not string.match(url["url"], "[^a-z0-9]"..item_value.."[0-9a-z][0-9a-z]") then
+      if allowed(url["url"], nil) then
         return wget.actions.ABORT
       else
         return wget.actions.EXIT
       end
     else
-      return wget.actions.CONTINUE
-    end
-  elseif status_code == 0 then
-
-    io.stdout:write("\nServer returned "..http_stat.statcode..". Sleeping.\n")
-    io.stdout:flush()
-
-    os.execute("sleep 10")
-    
-    tries = tries + 1
-
-    if tries >= 6 then
-      io.stdout:write("\nI give up...\n")
-      io.stdout:flush()
-      tries = 0
-      return wget.actions.ABORT
-    else
+      os.execute("sleep " .. math.floor(math.pow(2, tries)))
+      tries = tries + 1
       return wget.actions.CONTINUE
     end
   end
@@ -177,4 +264,11 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
   end
 
   return wget.actions.NOTHING
+end
+
+wget.callbacks.before_exit = function(exit_status, exit_status_string)
+  if abortgrab == true then
+    return wget.exits.IO_FAIL
+  end
+  return exit_status
 end

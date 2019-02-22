@@ -21,7 +21,7 @@ Running without a warrior
 -------------------------
 To run this outside the warrior, clone this repository, cd into its directory and run:
 
-    pip install seesaw
+    pip install --upgrade seesaw
     ./get-wget-lua.sh
 
 then start downloading with:
@@ -32,9 +32,9 @@ For more options, run:
 
     run-pipeline --help
 
-If you don't have root access and/or your version of pip is very old, you can replace "pip install seesaw" with:
+If you don't have root access and/or your version of pip is very old, you can replace "pip install --upgrade seesaw" with:
 
-    wget https://raw.github.com/pypa/pip/master/contrib/get-pip.py ; python get-pip.py --user ; ~/.local/bin/pip install --user seesaw
+    wget https://raw.github.com/pypa/pip/master/contrib/get-pip.py ; python get-pip.py --user ; ~/.local/bin/pip install --upgrade --user seesaw
 
 so that pip and seesaw are installed in your home, then run
 
@@ -56,26 +56,32 @@ Distribution-specific setup
 ### For Debian/Ubuntu:
 
     adduser --system --group --shell /bin/bash archiveteam
-    apt-get install -y git-core libgnutls-dev lua5.1 liblua5.1-0 liblua5.1-0-dev screen python-dev python-pip bzip2 zlib1g-dev
-    pip install seesaw
+    apt-get update && apt-get install -y git-core libgnutls-dev lua5.1 liblua5.1-0 liblua5.1-0-dev screen python-dev python-pip bzip2 zlib1g-dev flex autoconf
+    pip install --upgrade seesaw
     su -c "cd /home/archiveteam; git clone https://github.com/ArchiveTeam/reddit-grab.git; cd reddit-grab; ./get-wget-lua.sh" archiveteam
     screen su -c "cd /home/archiveteam/reddit-grab/; run-pipeline pipeline.py --concurrent 2 --address '127.0.0.1' YOURNICKHERE" archiveteam
     [... ctrl+A D to detach ...]
+
+In __Debian Jessie__, the `libgnutls-dev` package was renamed to `libgnutls28-dev`. So, you need to do the following instead:
+
+    adduser --system --group --shell /bin/bash archiveteam
+    apt-get update && apt-get install -y git-core libgnutls28-dev lua5.1 liblua5.1-0 liblua5.1-0-dev screen python-dev python-pip bzip2 zlib1g-dev flex autoconf
+    [... pretty much the same as above ...]
 
 Wget-lua is also available on [ArchiveTeam's PPA](https://launchpad.net/~archiveteam/+archive/wget-lua) for Ubuntu.
 
 ### For CentOS:
 
-Ensure that you have the CentOS equivalent of bzip2 installed as well. You might need the EPEL repository to be enabled.
+Ensure that you have the CentOS equivalent of bzip2 installed as well. You will the EPEL repository to be enabled.
 
-    yum -y install gnutls-devel lua-devel python-pip zlib-devel
-    pip install seesaw
+    yum -y install autoconf automake flex gnutls-devel lua-devel python-pip zlib-devel
+    pip install --upgrade seesaw
     [... pretty much the same as above ...]
 
 ### For openSUSE:
 
     zypper install liblua5_1 lua51 lua51-devel screen python-pip libgnutls-devel bzip2 python-devel gcc make
-    pip install seesaw
+    pip install --upgrade seesaw
     [... pretty much the same as above ...]
 
 ### For OS X:
@@ -83,7 +89,7 @@ Ensure that you have the CentOS equivalent of bzip2 installed as well. You might
 You need Homebrew. Ensure that you have the OS X equivalent of bzip2 installed as well.
 
     brew install python lua gnutls
-    pip install seesaw
+    pip install --upgrade seesaw
     [... pretty much the same as above ...]
 
 **There is a known issue with some packaged versions of rsync. If you get errors during the upload stage, reddit-grab will not work with your rsync version.**
@@ -97,11 +103,20 @@ This supposedly fixes it:
 Ensure that you have the Arch equivalent of bzip2 installed as well.
 
 1. Make sure you have `python2-pip` installed.
-2. Install [https://aur.archlinux.org/packages/wget-lua/](the wget-lua package from the AUR). 
-3. Run `pip2 install seesaw`.
+2. Install [the wget-lua package from the AUR](https://aur.archlinux.org/packages/wget-lua/). 
+3. Run `pip2 install --upgrade seesaw`.
 4. Modify the run-pipeline script in seesaw to point at `#!/usr/bin/python2` instead of `#!/usr/bin/python`.
 5. `useradd --system --group users --shell /bin/bash --create-home archiveteam`
 6. `screen su -c "cd /home/archiveteam/reddit-grab/; run-pipeline pipeline.py --concurrent 2 --address '127.0.0.1' YOURNICKHERE" archiveteam`
+
+### For Alpine Linux:
+
+    apk add lua5.1 git python bzip2 bash rsync gcc libc-dev lua5.1-dev zlib-dev gnutls-dev autoconf flex make
+    python -m ensurepip
+    pip install -U seesaw
+    git clone https://github.com/ArchiveTeam/reddit-grab
+    cd reddit-grab; ./get-wget-lua.sh
+    run-pipeline pipeline.py --concurrent 2 --address '127.0.0.1' YOURNICKHERE
 
 ### For FreeBSD:
 
@@ -134,6 +149,12 @@ If you're sure that you followed the steps to install `seesaw`, permissions on y
 
     chmod o+rX -R /usr/local/lib/python2.7/dist-packages
 
+### run-pipeline: command not found
+
+Install `seesaw` using `pip2` instead of `pip`.
+
+    pip2 install seesaw
+
 ### Issues in the code
 
 If you notice a bug and want to file a bug report, please use the GitHub issues tracker.
@@ -142,4 +163,5 @@ Are you a developer? Help write code for us! Look at our [developer documentatio
 
 ### Other problems
 
-Have an issue not listed here? Join us on IRC and ask! We can be found at irc.efnet.org #deaddit.
+Have an issue not listed here? Join us on IRC and ask! We can be found at irc.efnet.org #shreddit.
+
