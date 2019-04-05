@@ -21,7 +21,7 @@ Running without a warrior
 -------------------------
 To run this outside the warrior, clone this repository, cd into its directory and run:
 
-    pip install --upgrade seesaw
+    pip install --upgrade seesaw warcio
     ./get-wget-lua.sh
 
 then start downloading with:
@@ -34,7 +34,7 @@ For more options, run:
 
 If you don't have root access and/or your version of pip is very old, you can replace "pip install --upgrade seesaw" with:
 
-    wget https://raw.github.com/pypa/pip/master/contrib/get-pip.py ; python get-pip.py --user ; ~/.local/bin/pip install --upgrade --user seesaw
+    wget https://raw.github.com/pypa/pip/master/contrib/get-pip.py ; python get-pip.py --user ; ~/.local/bin/pip install --upgrade --user seesaw warcio
 
 so that pip and seesaw are installed in your home, then run
 
@@ -57,7 +57,7 @@ Distribution-specific setup
 
     adduser --system --group --shell /bin/bash archiveteam
     apt-get update && apt-get install -y git-core libgnutls-dev lua5.1 liblua5.1-0 liblua5.1-0-dev screen python-dev python-pip bzip2 zlib1g-dev flex autoconf
-    pip install --upgrade seesaw
+    pip install --upgrade seesaw warcio
     su -c "cd /home/archiveteam; git clone https://github.com/ArchiveTeam/reddit-grab.git; cd reddit-grab; ./get-wget-lua.sh" archiveteam
     screen su -c "cd /home/archiveteam/reddit-grab/; run-pipeline pipeline.py --concurrent 2 --address '127.0.0.1' YOURNICKHERE" archiveteam
     [... ctrl+A D to detach ...]
@@ -75,13 +75,13 @@ Wget-lua is also available on [ArchiveTeam's PPA](https://launchpad.net/~archive
 Ensure that you have the CentOS equivalent of bzip2 installed as well. You will the EPEL repository to be enabled.
 
     yum -y install autoconf automake flex gnutls-devel lua-devel python-pip zlib-devel
-    pip install --upgrade seesaw
+    pip install --upgrade seesaw warcio
     [... pretty much the same as above ...]
 
 ### For openSUSE:
 
     zypper install liblua5_1 lua51 lua51-devel screen python-pip libgnutls-devel bzip2 python-devel gcc make
-    pip install --upgrade seesaw
+    pip install --upgrade seesaw warcio
     [... pretty much the same as above ...]
 
 ### For OS X:
@@ -89,7 +89,7 @@ Ensure that you have the CentOS equivalent of bzip2 installed as well. You will 
 You need Homebrew. Ensure that you have the OS X equivalent of bzip2 installed as well.
 
     brew install python lua gnutls
-    pip install --upgrade seesaw
+    pip install --upgrade seesaw warcio
     [... pretty much the same as above ...]
 
 **There is a known issue with some packaged versions of rsync. If you get errors during the upload stage, reddit-grab will not work with your rsync version.**
@@ -104,16 +104,16 @@ Ensure that you have the Arch equivalent of bzip2 installed as well.
 
 1. Make sure you have `python2-pip` installed.
 2. Install [the wget-lua package from the AUR](https://aur.archlinux.org/packages/wget-lua/). 
-3. Run `pip2 install --upgrade seesaw`.
+3. Run `pip2 install --upgrade seesaw warcio`.
 4. Modify the run-pipeline script in seesaw to point at `#!/usr/bin/python2` instead of `#!/usr/bin/python`.
 5. `useradd --system --group users --shell /bin/bash --create-home archiveteam`
 6. `screen su -c "cd /home/archiveteam/reddit-grab/; run-pipeline pipeline.py --concurrent 2 --address '127.0.0.1' YOURNICKHERE" archiveteam`
 
-### For Alpine Linux:
+### For Alpine Linux (Warrior VM):
 
     apk add lua5.1 git python bzip2 bash rsync gcc libc-dev lua5.1-dev zlib-dev gnutls-dev autoconf flex make
     python -m ensurepip
-    pip install -U seesaw
+    pip install -U seesaw warcio
     git clone https://github.com/ArchiveTeam/reddit-grab
     cd reddit-grab; ./get-wget-lua.sh
     run-pipeline pipeline.py --concurrent 2 --address '127.0.0.1' YOURNICKHERE
