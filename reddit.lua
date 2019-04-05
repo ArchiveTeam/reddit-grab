@@ -15,6 +15,7 @@ local abortgrab = false
 
 local posts = {}
 local requested_children = {}
+local outlinks = {}
 
 for ignore in io.open("ignore-list", "r"):lines() do
   downloaded[ignore] = true
@@ -42,10 +43,14 @@ end
 allowed = function(url, parenturl)
   if string.match(url, "'+")
       or string.match(url, "[<>\\%*%$;%^%[%],%(%){}]")
+      or string.match(url, "^https?://[^/]*reddit%.com/[^%?]+%?context=[0-9]+&depth=[0-9]+")
+      or string.match(url, "^https?://[^/]*reddit%.com/[^%?]+%?depth=[0-9]+&context=[0-9]+")
       or string.match(url, "^https?://[^/]*reddit%.com/login")
       or string.match(url, "^https?://[^/]*reddit%.com/register")
       or string.match(url, "%?sort=")
-      or string.match(url, "^https?://www%.reddit%.com/") --TEMP
+      or string.match(url, "^https?://[^/]*reddit%.app%.link/")
+      or string.match(url, "^https?://out%.reddit%.com/r/")
+      or (string.match(url, "^https?://gateway%.reddit%.com/") and not string.match(url, "/morecomments/"))
       or string.match(url, "/%.rss$") then
     return false
   end
@@ -67,7 +72,8 @@ allowed = function(url, parenturl)
 
   if string.match(url, "^https?://i%.redd%.it/")
       or string.match(url, "^https?://[^/]*redditmedia%.com/")
-      or string.match(url, "^https://old.reddit.com/api/morechildren$") then
+      or string.match(url, "^https?://old%.reddit%.com/api/morechildren$")
+      or string.match(url, "^https?://v%.redd%.it/[^/]+/[^/]+$") then
     return true
   end
 
@@ -75,6 +81,17 @@ allowed = function(url, parenturl)
     if posts[s] then
       return true
     end
+  end
+
+  if parenturl
+      and (string.match(parenturl, "^https?://www%.reddit%.com/") or outlinks[parenturl])
+      and not string.match(url, "^https?://[^/]*reddit%.com/")
+      and not string.match(url, "^https?://[^/]*youtube%.com")
+      and not string.match(url, "^https?://[^/]*youtu%.be") then
+    if outlinks[parenturl] == nil then
+      outlinks[url] = true
+    end
+    return true
   end
   
   return false
@@ -106,7 +123,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
   local function check(urla)
     local origurl = url
     local url = string.match(urla, "^([^#]+)")
-    local url_ = string.gsub(url, "&amp;", "&")
+    local url_ = string.gsub(string.match(url, "^(.-)%.?$"), "&amp;", "&")
     if (downloaded[url_] ~= true and addedtolist[url_] ~= true)
         and allowed(url_, origurl) then
       table.insert(urls, { url=url_ })
@@ -158,7 +175,10 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
 
   if allowed(url, nil)
       and not string.match(url, "^https?://[^/]*redditmedia%.com/")
-      and not string.match(url, "^https?://[^/]*redditstatic%.com/") then
+      and not string.match(url, "^https?://[^/]*redditstatic%.com/")
+      and not string.match(url, "^https?://out%.reddit%.com/")
+      and not string.match(url, "^https?://v%.redd%.it/[^/]+/[^%.]*%.ts$")
+      and not string.match(url, "^https?://v%.redd%.it/[^/]+/[^%.]*$") then
     html = read_file(file)
     if string.match(url, "^https://old.reddit.com/api/morechildren$") then
       html = string.gsub(html, '\\"', '"')
@@ -173,6 +193,42 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           requested_children[post_data] = true
           table.insert(urls, {url="https://old.reddit.com/api/morechildren",
                               post_data=post_data})
+        end
+      end
+    elseif string.match(url, "^https?://www%.reddit%.com/r/[^/]+/comments/[^/]")
+        or string.match(url, "^https?://www%.reddit%.com/comments/[^/]")
+        or string.match(url, "^https?://gateway%.reddit%.com/desktopapi/v1/morecomments/t3_[^%?]") then
+      for s in string.gmatch(html, '"token"%s*:%s*"([^"]+)"') do
+        local post_data = '{"token":"' .. s .. '"}'
+        local comment_id = nil
+        if string.match(url, "^https?://www%.reddit%.com/r/[^/]+/comments/[^/]") then
+          comment_id = string.match(url, "^https?://www%.reddit%.com/r/[^/]+/comments/([^/]+)")
+        elseif string.match(url, "^https?://www%.reddit%.com/comments/[^/]") then
+          comment_id = string.match(url, "^https?://www%.reddit%.com/comments/([^/]+)")
+        elseif string.match(url, "^https?://gateway%.reddit%.com/desktopapi/v1/morecomments/t3_[^%?]") then
+          comment_id = string.match(url, "^https?://gateway%.reddit%.com/desktopapi/v1/morecomments/t3_([^%?]+)")
+        end
+        if requested_children[post_data] == nil then
+          requested_children[post_data] = true
+          table.insert(urls, {url="https://gateway.reddit.com/desktopapi/v1/morecomments/t3_" .. comment_id .. "?rtj=only&allow_over18=1&include=",
+                              post_data=post_data})
+        end
+      end
+    end
+    if string.match(url, "^https?://gateway%.reddit%.com/desktopapi/v1/morecomments/") then
+      for s in string.gmatch(html, '"permalink"%s*:%s*"([^"]+)"') do
+        check("https?://www.reddit.com" .. s)
+      end
+    end
+    if string.match(url, "^https?://v%.redd%.it/[^/]+/[^%.]+%.mpd$") then
+      for s in string.gmatch(html, "<BaseURL>([^<]+)</BaseURL>") do
+        checknewshorturl(s)
+      end
+    end
+    if string.match(url, "^https?://v%.redd%.it/[^/]+/[^%.]+%.m3u8$") then
+      for s in string.gmatch(html, "(.-)\n") do
+        if not string.match(s, "^#") then
+          checknewshorturl(s)
         end
       end
     end
