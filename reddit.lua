@@ -70,8 +70,7 @@ allowed = function(url, parenturl)
     return false
   end
 
-  if string.match(url, "^https?://i%.redd%.it/")
-      or string.match(url, "^https?://[^/]*redditmedia%.com/")
+  if string.match(url, "^https?://[^/]*redditmedia%.com/")
       or string.match(url, "^https?://old%.reddit%.com/api/morechildren$")
       or string.match(url, "^https?://v%.redd%.it/[^/]+/[^/]+$") then
     return true
@@ -84,13 +83,11 @@ allowed = function(url, parenturl)
   end
 
   if parenturl
-      and (string.match(parenturl, "^https?://www%.reddit%.com/") or outlinks[parenturl])
+      and string.match(parenturl, "^https?://www%.reddit%.com/")
       and not string.match(url, "^https?://[^/]*reddit%.com/")
       and not string.match(url, "^https?://[^/]*youtube%.com")
-      and not string.match(url, "^https?://[^/]*youtu%.be") then
-    if outlinks[parenturl] == nil then
-      outlinks[url] = true
-    end
+      and not string.match(url, "^https?://[^/]*youtu%.be")
+      and not string.match(url, "^https?://[^/]*redd%.it/") then
     return true
   end
   
