@@ -15,7 +15,6 @@ local abortgrab = false
 
 local posts = {}
 local requested_children = {}
-local outlinks = {}
 
 for ignore in io.open("ignore-list", "r"):lines() do
   downloaded[ignore] = true
@@ -51,7 +50,8 @@ allowed = function(url, parenturl)
       or string.match(url, "^https?://[^/]*reddit%.app%.link/")
       or string.match(url, "^https?://out%.reddit%.com/r/")
       or (string.match(url, "^https?://gateway%.reddit%.com/") and not string.match(url, "/morecomments/"))
-      or string.match(url, "/%.rss$") then
+      or string.match(url, "/%.rss$")
+      or (parenturl and string.match(url, "^https?://amp%.reddit%.com/")) then
     return false
   end
 
@@ -72,7 +72,8 @@ allowed = function(url, parenturl)
 
   if string.match(url, "^https?://[^/]*redditmedia%.com/")
       or string.match(url, "^https?://old%.reddit%.com/api/morechildren$")
-      or string.match(url, "^https?://v%.redd%.it/[^/]+/[^/]+$") then
+      or string.match(url, "^https?://v%.redd%.it/[^/]+/[^/]+$")
+      or string.match(url, "^https?://preview%.redd%.it/[^/]+/[^/]+$") then
     return true
   end
 
@@ -103,7 +104,7 @@ wget.callbacks.download_child_p = function(urlpos, parent, depth, start_url_pars
   end
 
   if (downloaded[url] ~= true and addedtolist[url] ~= true)
-      and (allowed(url, parent["url"]) or html == 0) then
+      and (allowed(url, parent["url"]) or (allowed(parent["url"]) and html == 0)) then
     addedtolist[url] = true
     return true
   end
@@ -290,7 +291,7 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
     io.stdout:flush()
     local maxtries = 8
     if not allowed(url["url"], nil) then
-        maxtries = 2
+        maxtries = 0
     end
     if tries > maxtries then
       io.stdout:write("\nI give up...\n")
