@@ -39,6 +39,13 @@ read_file = function(file)
   end
 end
 
+processed = function(url)
+  if downloaded[url] or addedtolist[url] then
+    return true
+  end
+  return false
+end
+
 allowed = function(url, parenturl)
   if string.match(url, "'+")
       or string.match(url, "[<>\\%*%$;%^%[%],%(%){}]")
@@ -103,9 +110,10 @@ wget.callbacks.download_child_p = function(urlpos, parent, depth, start_url_pars
     return false
   end
 
-  if (downloaded[url] ~= true and addedtolist[url] ~= true)
+  if not processed(url)
       and (allowed(url, parent["url"]) or (allowed(parent["url"]) and html == 0)) then
     addedtolist[url] = true
+print('b ' .. html .. ' ' .. url)
     return true
   end
   
@@ -122,11 +130,13 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     local origurl = url
     local url = string.match(urla, "^([^#]+)")
     local url_ = string.gsub(string.match(url, "^(.-)%.?$"), "&amp;", "&")
-    if (downloaded[url_] ~= true and addedtolist[url_] ~= true)
-        and allowed(url_, origurl) then
+    if not processed(url_)
+        and allowed(url_, origurl)
+        and not (string.match(url_, "[^/]$") and processed(url_ .. "/")) then
       table.insert(urls, { url=url_ })
       addedtolist[url_] = true
       addedtolist[url] = true
+print('a ' .. url)
     end
   end
 
