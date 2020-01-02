@@ -46,7 +46,7 @@ processed = function(url)
   return false
 end
 
-allowed = function(url, parenturl)
+allowed = function(url, parenturl, source)
   if string.match(url, "'+")
       or string.match(url, "[<>\\%*%$;%^%[%],%(%){}]")
       or string.match(url, "^https?://[^/]*reddit%.com/[^%?]+%?context=[0-9]+&depth=[0-9]+")
@@ -78,7 +78,7 @@ allowed = function(url, parenturl)
   end
 
   if string.match(url, "^https?://[^/]*redditmedia%.com/")
-      or string.match(url, "^https?://old%.reddit%.com/api/morechildren$")
+      or string.match(url, "^https?://www%.reddit%.com/api/morechildren$")
       or string.match(url, "^https?://v%.redd%.it/[^/]+/[^/]+$")
       or string.match(url, "^https?://preview%.redd%.it/[^/]+/[^/]+$") then
     return true
@@ -92,6 +92,7 @@ allowed = function(url, parenturl)
 
   if parenturl
       and string.match(parenturl, "^https?://www%.reddit%.com/")
+      and source ~= "download_child_p"
       and not string.match(url, "^https?://[^/]*reddit%.com/")
       and not string.match(url, "^https?://[^/]*youtube%.com")
       and not string.match(url, "^https?://[^/]*youtu%.be")
@@ -110,8 +111,12 @@ wget.callbacks.download_child_p = function(urlpos, parent, depth, start_url_pars
     return false
   end
 
+  if string.match(parent["url"], "^https?://www%.reddit%.com/comments/[a-z0-9]+") then
+    return true
+  end
+
   if not processed(url)
-      and (allowed(url, parent["url"]) or (allowed(parent["url"]) and html == 0)) then
+      and (allowed(url, parent["url"], "download_child_p") or (allowed(parent["url"], nil, "download_child_p") and html == 0)) then
     addedtolist[url] = true
 print('b ' .. html .. ' ' .. url)
     return true
@@ -131,7 +136,8 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     local url = string.match(urla, "^([^#]+)")
     local url_ = string.gsub(string.match(url, "^(.-)%.?$"), "&amp;", "&")
     if not processed(url_)
-        and allowed(url_, origurl)
+        and string.match(url_, "^https?://.+")
+        and allowed(url_, origurl, "get_urls")
         and not (string.match(url_, "[^/]$") and processed(url_ .. "/")) then
       table.insert(urls, { url=url_ })
       addedtolist[url_] = true
@@ -148,13 +154,13 @@ print('a ' .. url)
     elseif string.match(newurl, "^https?:\\/\\?/") then
       check(string.gsub(newurl, "\\", ""))
     elseif string.match(newurl, "^\\/\\/") then
-      check(string.match(url, "^(https?:)")..string.gsub(newurl, "\\", ""))
+      check(string.match(url, "^(https?:)") .. string.gsub(newurl, "\\", ""))
     elseif string.match(newurl, "^//") then
-      check(string.match(url, "^(https?:)")..newurl)
+      check(string.match(url, "^(https?:)") .. newurl)
     elseif string.match(newurl, "^\\/") then
-      check(string.match(url, "^(https?://[^/]+)")..string.gsub(newurl, "\\", ""))
+      check(string.match(url, "^(https?://[^/]+)") .. string.gsub(newurl, "\\", ""))
     elseif string.match(newurl, "^/") then
-      check(string.match(url, "^(https?://[^/]+)")..newurl)
+      check(string.match(url, "^(https?://[^/]+)") .. newurl)
     elseif string.match(newurl, "^%./") then
       checknewurl(string.match(newurl, "^%.(.+)"))
     end
@@ -162,7 +168,7 @@ print('a ' .. url)
 
   local function checknewshorturl(newurl)
     if string.match(newurl, "^%?") then
-      check(string.match(url, "^(https?://[^%?]+)")..newurl)
+      check(string.match(url, "^(https?://[^%?]+)") .. newurl)
     elseif not (string.match(newurl, "^https?:\\?/\\?//?/?")
         or string.match(newurl, "^[/\\]")
         or string.match(newurl, "^%./")
@@ -172,26 +178,29 @@ print('a ' .. url)
         or string.match(newurl, "^android%-app:")
         or string.match(newurl, "^ios%-app:")
         or string.match(newurl, "^%${")) then
-      check(string.match(url, "^(https?://.+/)")..newurl)
+      check(string.match(url, "^(https?://.+/)") .. newurl)
     end
   end
 
-  if string.match(url, "^https?://www%.reddit%.com/comments/[a-z0-9]+$")
-      or string.match(url, "^https?://old%.reddit%.com/comments/[a-z0-9]+$") then
-    posts[string.match(url, "[a-z0-9]+$")] = true
+  if string.match(url, "^https?://www%.reddit%.com/r/[^/]+/comments/[a-z0-9]+") then
+    posts[string.match(url, "^https?://www%.reddit%.com/r/[^/]+/comments/([a-z0-9]+)")] = true
   end
 
-  if allowed(url, nil)
+  if allowed(url, nil, "get_urls")
+      and status_code < 300
       and not string.match(url, "^https?://[^/]*redditmedia%.com/")
       and not string.match(url, "^https?://[^/]*redditstatic%.com/")
       and not string.match(url, "^https?://out%.reddit%.com/")
       and not string.match(url, "^https?://v%.redd%.it/[^/]+/[^%.]*%.ts$")
       and not string.match(url, "^https?://v%.redd%.it/[^/]+/[^%.]*$") then
     html = read_file(file)
-    if string.match(url, "^https://old.reddit.com/api/morechildren$") then
+    if string.match(url, "^https?://www%.reddit%.com/api/morechildren$") then
       html = string.gsub(html, '\\"', '"')
-    end
-    if string.match(url, "^https?://old%.reddit%.com/") then
+    elseif string.match(url, "^https?://www%.reddit%.com/r/[^/]+/comments/")
+        or string.match(url, "^https?://www%.reddit%.com/r/[^/]+/duplicates/") then
+      html = string.gsub(html, "<div%s+class='spacer'>%s*<div%s+class=\"titlebox\">.-</div>%s*</div>%s*<div%s+class='spacer'>%s*<div%s+id=\"ad_[0-9]+\"%s*class=\"ad%-container%s*\">", "")
+    end    
+    if string.match(url, "^https?://www%.reddit%.com/") then
       for s in string.gmatch(html, "(return%s+morechildren%(this,%s*'[^']+',%s*'[^']+',%s*'[^']+',%s*[0-9]+,%s*'[^']+'%))") do
         local link_id, sort, children, depth, limit_children = string.match(s, "%(this,%s*'([^']+)',%s*'([^']+)',%s*'([^']+)',%s*([0-9]+),%s*'([^']+)'%)$")
         local id = string.match(children, "^([^,]+)")
@@ -199,29 +208,29 @@ print('a ' .. url)
         local post_data = "link_id=" .. link_id .. "&sort=" .. sort .. "&children=" .. string.gsub(children, ",", "%%2C") .. "&depth=" .. depth .. "&id=t1_" .. id .. "&limit_children=" .. limit_children .. "&r=" .. subreddit .. "&renderstyle=html"
         if requested_children[post_data] == nil then
           requested_children[post_data] = true
-          table.insert(urls, {url="https://old.reddit.com/api/morechildren",
+          table.insert(urls, {url="https://www.reddit.com/api/morechildren",
                               post_data=post_data})
         end
       end
-    elseif string.match(url, "^https?://www%.reddit%.com/r/[^/]+/comments/[^/]")
-        or string.match(url, "^https?://www%.reddit%.com/comments/[^/]")
-        or string.match(url, "^https?://gateway%.reddit%.com/desktopapi/v1/morecomments/t3_[^%?]") then
-      for s in string.gmatch(html, '"token"%s*:%s*"([^"]+)"') do
-        local post_data = '{"token":"' .. s .. '"}'
-        local comment_id = nil
-        if string.match(url, "^https?://www%.reddit%.com/r/[^/]+/comments/[^/]") then
-          comment_id = string.match(url, "^https?://www%.reddit%.com/r/[^/]+/comments/([^/]+)")
-        elseif string.match(url, "^https?://www%.reddit%.com/comments/[^/]") then
-          comment_id = string.match(url, "^https?://www%.reddit%.com/comments/([^/]+)")
-        elseif string.match(url, "^https?://gateway%.reddit%.com/desktopapi/v1/morecomments/t3_[^%?]") then
-          comment_id = string.match(url, "^https?://gateway%.reddit%.com/desktopapi/v1/morecomments/t3_([^%?]+)")
-        end
-        if requested_children[post_data] == nil then
-          requested_children[post_data] = true
-          table.insert(urls, {url="https://gateway.reddit.com/desktopapi/v1/morecomments/t3_" .. comment_id .. "?rtj=only&allow_over18=1&include=",
-                              post_data=post_data})
-        end
-      end
+    --elseif string.match(url, "^https?://www%.reddit%.com/r/[^/]+/comments/[^/]")
+    --    or string.match(url, "^https?://www%.reddit%.com/comments/[^/]")
+    --    or string.match(url, "^https?://gateway%.reddit%.com/desktopapi/v1/morecomments/t3_[^%?]") then
+    --  for s in string.gmatch(html, '"token"%s*:%s*"([^"]+)"') do
+    --    local post_data = '{"token":"' .. s .. '"}'
+    --    local comment_id = nil
+    --    if string.match(url, "^https?://www%.reddit%.com/r/[^/]+/comments/[^/]") then
+    --      comment_id = string.match(url, "^https?://www%.reddit%.com/r/[^/]+/comments/([^/]+)")
+    --    elseif string.match(url, "^https?://www%.reddit%.com/comments/[^/]") then
+    --      comment_id = string.match(url, "^https?://www%.reddit%.com/comments/([^/]+)")
+    --    elseif string.match(url, "^https?://gateway%.reddit%.com/desktopapi/v1/morecomments/t3_[^%?]") then
+    --      comment_id = string.match(url, "^https?://gateway%.reddit%.com/desktopapi/v1/morecomments/t3_([^%?]+)")
+    --    end
+    --    if requested_children[post_data] == nil then
+    --      requested_children[post_data] = true
+    --      table.insert(urls, {url="https://gateway.reddit.com/desktopapi/v1/morecomments/t3_" .. comment_id .. "?rtj=only&allow_over18=1&include=",
+    --                          post_data=post_data})
+    --    end
+    --  end
     end
     if string.match(url, "^https?://gateway%.reddit%.com/desktopapi/v1/morecomments/") then
       for s in string.gmatch(html, '"permalink"%s*:%s*"([^"]+)"') do
@@ -267,7 +276,7 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
   status_code = http_stat["statcode"]
   
   url_count = url_count + 1
-  io.stdout:write(url_count .. "=" .. status_code .. " " .. url["url"] .. "  \n")
+  io.stdout:write(url_count .. "=" .. status_code .. " " .. url["url"] .. " \n")
   io.stdout:flush()
 
   if (status_code >= 300 and status_code <= 399) then
@@ -283,6 +292,14 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
       return wget.actions.EXIT
     end
   end
+
+  if downloaded[url["url"]] and http_stat["rderrmsg"] then
+    io.stdout:write("Url was already downloaded.\n")
+    io.stdout:write(http_stat["rderrmsg"] .. "\n")
+    io.stdout:write("Skipping URL.\n")
+    io.stdout:flush()
+    return wget.actions.EXIT
+  end
   
   if (status_code >= 200 and status_code <= 399) then
     downloaded[url["url"]] = true
@@ -297,17 +314,17 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
   if status_code >= 500
       or (status_code >= 400 and status_code ~= 403 and status_code ~= 404)
       or status_code  == 0 then
-    io.stdout:write("Server returned "..http_stat.statcode.." ("..err.."). Sleeping.\n")
+    io.stdout:write("Server returned " .. http_stat.statcode .. " (" .. err .. "). Sleeping.\n")
     io.stdout:flush()
     local maxtries = 8
-    if not allowed(url["url"], nil) then
+    if not allowed(url["url"], nil, "httploop_result") then
         maxtries = 0
     end
-    if tries > maxtries then
+    if tries >= maxtries then
       io.stdout:write("\nI give up...\n")
       io.stdout:flush()
       tries = 0
-      if allowed(url["url"], nil) then
+      if allowed(url["url"], nil, "httploop_result") then
         return wget.actions.ABORT
       else
         return wget.actions.EXIT
