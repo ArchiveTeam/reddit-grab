@@ -19,13 +19,6 @@ import string
 import re
 import random
 
-try:
-    import warcio
-    from warcio.archiveiterator import ArchiveIterator
-    from warcio.warcwriter import WARCWriter
-except:
-    raise Exception("Please install warc with 'sudo pip install warcio --upgrade'.")
-
 import seesaw
 from seesaw.externalprocess import WgetDownload
 from seesaw.pipeline import Pipeline
@@ -69,7 +62,7 @@ if not WGET_LUA:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20200102.02'
+VERSION = '20200102.03'
 USER_AGENT = 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.0; WOW64; Trident/4.0; SLCC1)'
 TRACKER_ID = 'reddit'
 TRACKER_HOST = 'tracker.archiveteam.org'
