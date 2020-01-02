@@ -69,7 +69,7 @@ if not WGET_LUA:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20200102.01'
+VERSION = '20200102.02'
 USER_AGENT = 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.0; WOW64; Trident/4.0; SLCC1)'
 TRACKER_ID = 'reddit'
 TRACKER_HOST = 'tracker.archiveteam.org'

@@ -279,6 +279,10 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
   io.stdout:write(url_count .. "=" .. status_code .. " " .. url["url"] .. " \n")
   io.stdout:flush()
 
+  if status_code == 204 then
+    return wget.actions.EXIT
+  end
+
   if (status_code >= 300 and status_code <= 399) then
     local newloc = string.match(http_stat["newloc"], "^([^#]+)")
     if string.match(newloc, "^//") then
