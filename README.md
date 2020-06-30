@@ -163,5 +163,5 @@ Are you a developer? Help write code for us! Look at our [developer documentatio
 
 ### Other problems
 
-Have an issue not listed here? Join us on IRC and ask! We can be found at irc.efnet.org #shreddit.
+Have an issue not listed here? Join us on IRC and ask! We can be found on IRC hackint #shreddit.
 

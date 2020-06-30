@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# This script downloads and compiles wget-lua.
+# This script clones and compiles wget-lua.
 #
 
 # first, try to detect gnutls or openssl
@@ -18,35 +18,35 @@ then
   fi
 fi
 
-WGET_DOWNLOAD_URL="http://warriorhq.archiveteam.org/downloads/wget-lua/wget-1.14.lua.LATEST.tar.bz2"
+if ! zstd --version | grep -q 1.4.4
+then
+  echo "Need version 1.4.4 of libzstd-dev and zstd"
+  exit 1
+fi
 
 rm -rf get-wget-lua.tmp/
 mkdir -p get-wget-lua.tmp
 
 cd get-wget-lua.tmp
 
-if builtin type -p curl &>/dev/null
-then
-  curl -L $WGET_DOWNLOAD_URL | tar -xj --strip-components=1
-elif builtin type -p wget &>/dev/null
-then
-  wget --output-document=- $WGET_DOWNLOAD_URL | tar -xj --strip-components=1
-else
-  echo "You need Curl or Wget to download the source files."
-  exit 1
-fi
+git clone https://github.com/archiveteam/wget-lua.git
 
-if ./configure $CONFIGURE_SSL_OPT --disable-nls && make && src/wget -V | grep -q lua
+cd wget-lua
+git checkout v1.20.3-at
+
+#echo -n 1.20.3-at-lua | tee ./.version ./.tarball-version > /dev/null
+
+if ./bootstrap && ./configure $CONFIGURE_SSL_OPT --disable-nls && make && src/wget -V | grep -q lua
 then
-  cp src/wget ../wget-lua
-  cd ../
+  cp src/wget ../../wget-at
+  cd ../../
   echo
   echo
   echo "###################################################################"
   echo
   echo "wget-lua successfully built."
   echo
-  ./wget-lua --help | grep -iE "gnu|warc|lua"
+  ./wget-at --help | grep -iE "gnu|warc|lua"
   rm -rf get-wget-lua.tmp
   exit 0
 else
