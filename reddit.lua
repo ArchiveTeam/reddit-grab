@@ -72,6 +72,8 @@ allowed = function(url, parenturl)
     or string.match(url, "^https?://out%.reddit%.com/r/")
     or string.match(url, "^https?://emoji%.redditmedia%.com/")
     or string.match(url, "^https?://styles%.redditmedia%.com/")
+    or string.match(url, "^https?://old%.reddit%.com/gallery/")
+    or string.match(url, "^https?://old%.reddit%.com/gold%?")
     or string.match(url, "^https?://[^%.]+%.redd%.it/award_images/")
     or (
       string.match(url, "^https?://gateway%.reddit%.com/")
@@ -109,8 +111,12 @@ allowed = function(url, parenturl)
     return false
   end
 
+  if string.match(url, "^https?://gateway%.reddit%.com/desktopapi/v1/morecomments/")
+    or string.match(url, "^https?://old%.reddit%.com/api/morechildren$") then
+    return true
+  end
+
   if (string.match(url, "^https?://[^/]*redditmedia%.com/")
-      or string.match(url, "^https?://old%.reddit%.com/api/morechildren$")
       or string.match(url, "^https?://v%.redd%.it/")
       or string.match(url, "^https?://i%.redd%.it/")
       or string.match(url, "^https?://[^%.]*preview%.redd%.it/.")
@@ -216,10 +222,14 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     end
   end
 
-  if string.match(url, "^https?://www%.reddit%.com/") then
+  if string.match(url, "^https?://www%.reddit%.com/")
+    and not string.match(url, "/api/") then
     check(string.gsub(url, "^https?://www%.reddit%.com/", "https://old.reddit.com/"))
-  --elseif string.match(url, "^https?://old%.reddit%.com/") then
-  --  check(string.gsub(url, "^https?://old%.reddit%.com/", "https://www.reddit.com/"))
+  end
+
+  local match = string.match(url, "^https?://preview%.redd%.it/([a-zA-Z0-9]+%.[a-zA-Z0-9]+)")
+  if match then
+    check("https://i.redd.it/" .. match)
   end
 
   if allowed(url)
