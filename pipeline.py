@@ -54,7 +54,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20200726.04'
+VERSION = '20200726.05'
 USER_AGENT = 'Archive Team'
 TRACKER_ID = 'reddittest'
 TRACKER_HOST = 'trackerproxy.meo.ws'
@@ -216,7 +216,7 @@ class WgetArgs(object):
             '--timeout', '30',
             '--tries', 'inf',
             '--domains', 'reddit.com',
-            '--header', 'Cookie: over18=1',
+            '--header', 'Cookie: over18=1; _options=%7B%22pref_quarantine_optin%22%3A%20true%7D',
             '--span-hosts',
             '--waitretry', '30',
             '--warc-file', ItemInterpolation('%(item_dir)s/%(warc_file_base)s'),
