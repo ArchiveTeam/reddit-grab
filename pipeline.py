@@ -54,7 +54,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20200726.05'
+VERSION = '20200726.06'
 USER_AGENT = 'Archive Team'
 TRACKER_ID = 'reddittest'
 TRACKER_HOST = 'trackerproxy.meo.ws'
@@ -163,7 +163,7 @@ class ZstdDict(object):
         response = requests.get(
             'http://tracker.archiveteam.org:25654/dictionary',
             params={
-                'project': TRACKER_ID
+                'project': 'reddit'
             }
         )
         response.raise_for_status()
@@ -232,7 +232,7 @@ class WgetArgs(object):
         with open(os.path.join(item['item_dir'], 'zstdict'), 'wb') as f:
             f.write(dict_data['dict'])
         item['dict_id'] = dict_data['id']
-        item['dict_project'] = TRACKER_ID
+        item['dict_project'] = 'reddit'
         wget_args.extend([
             '--warc-zstd-dict', ItemInterpolation('%(item_dir)s/zstdict'),
         ])
