@@ -54,8 +54,8 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20200701.01'
-USER_AGENT = 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.0; WOW64; Trident/4.0; SLCC1)'
+VERSION = '20200726.01'
+USER_AGENT = 'Archive Team'
 TRACKER_ID = 'reddit'
 TRACKER_HOST = 'trackerproxy.meo.ws'
 
@@ -216,6 +216,7 @@ class WgetArgs(object):
             '--timeout', '30',
             '--tries', 'inf',
             '--domains', 'reddit.com',
+            '--header', 'Cookie: over18=1',
             '--span-hosts',
             '--waitretry', '30',
             '--warc-file', ItemInterpolation('%(item_dir)s/%(warc_file_base)s'),
@@ -237,18 +238,21 @@ class WgetArgs(object):
         ])
 
         item_name = item['item_name']
-        item_type, item_value = item_name.split(':', 1)
+        item_type, item_value = item_name.split('.', 1)
 
         item['item_type'] = item_type
         item['item_value'] = item_value
 
-        if item_type == 'posts':
+        if item_type in ('posts', 'comments'):
             start, end = item_value.split('-')
             for i in range(int(start), int(end)+1):
                 post_id = self.int_to_str(i)
-                wget_args.extend(['--warc-header', 'reddit-post: {}'.format(post_id)])
-                wget_args.append('https://www.reddit.com/comments/{}'.format(post_id))
-                #wget_args.append('https://old.reddit.com/comments/{}'.format(post_id))
+                if item_type == 'posts':
+                    wget_args.extend(['--warc-header', 'reddit-post: {}'.format(post_id)])
+                    wget_args.append('https://www.reddit.com/api/info.json?id=t3_{}'.format(post_id))
+                elif item_type == 'comments':
+                    wget_args.extend(['--warc-header', 'reddit-comment: {}'.format(post_id)])
+                    wget_args.append('https://www.reddit.com/api/info.json?id=t1_{}'.format(post_id))
         else:
             raise Exception('Unknown item')
 
