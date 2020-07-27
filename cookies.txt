@@ -1,2 +1,0 @@
-.reddit.com	TRUE	/	FALSE	0	over18	1
-

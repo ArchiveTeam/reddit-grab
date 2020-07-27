@@ -55,28 +55,43 @@ Distribution-specific setup
 -------------------------
 ### For Debian/Ubuntu:
 
+Package `libzstd-dev` version 1.4.4 is required which is currently available from `buster-backports`.
+
     adduser --system --group --shell /bin/bash archiveteam
-    apt-get update && apt-get install -y git-core libgnutls-dev lua5.1 liblua5.1-0 liblua5.1-0-dev screen python-dev python-pip bzip2 zlib1g-dev flex autoconf
-    pip install --upgrade seesaw
+    echo deb http://deb.debian.org/debian buster-backports main contrib > /etc/apt/sources.list.d/backports.list
+    apt-get update \
+    && apt-get install -y git-core libgnutls-dev lua5.1 liblua5.1-0 liblua5.1-0-dev screen python-dev python-pip bzip2 zlib1g-dev flex autoconf autopoint texinfo gperf lua-socket rsync \
+    && apt-get -t buster-backports install zstd libzstd-dev libzstd1
+    pip install --upgrade seesaw zstandard
     su -c "cd /home/archiveteam; git clone https://github.com/ArchiveTeam/reddit-grab.git; cd reddit-grab; ./get-wget-lua.sh" archiveteam
     screen su -c "cd /home/archiveteam/reddit-grab/; run-pipeline pipeline.py --concurrent 2 --address '127.0.0.1' YOURNICKHERE" archiveteam
     [... ctrl+A D to detach ...]
 
-In __Debian Jessie__, the `libgnutls-dev` package was renamed to `libgnutls28-dev`. So, you need to do the following instead:
+In __Debian Jessie, Ubuntu 18.04 Bionic and above__, the `libgnutls-dev` package was renamed to `libgnutls28-dev`. So, you need to do the following instead:
 
     adduser --system --group --shell /bin/bash archiveteam
-    apt-get update && apt-get install -y git-core libgnutls28-dev lua5.1 liblua5.1-0 liblua5.1-0-dev screen python-dev python-pip bzip2 zlib1g-dev flex autoconf
+    echo deb http://deb.debian.org/debian buster-backports main contrib > /etc/apt/sources.list.d/backports.list
+    apt-get update \
+    && apt-get install -y git-core libgnutls28-dev lua5.1 liblua5.1-0 liblua5.1-0-dev screen python-dev python-pip bzip2 zlib1g-dev flex autoconf autopoint texinfo gperf lua-socket rsync \
+    && apt-get -t buster-backports install zstd libzstd-dev libzstd1
     [... pretty much the same as above ...]
 
 Wget-lua is also available on [ArchiveTeam's PPA](https://launchpad.net/~archiveteam/+archive/wget-lua) for Ubuntu.
 
 ### For CentOS:
 
-Ensure that you have the CentOS equivalent of bzip2 installed as well. You will the EPEL repository to be enabled.
+Ensure that you have the CentOS equivalent of bzip2 installed as well. You will need the EPEL repository to be enabled.
 
-    yum -y install autoconf automake flex gnutls-devel lua-devel python-pip zlib-devel
+    yum -y groupinstall "Development Tools"
+    yum -y install gnutls-devel lua-devel python-pip zlib-devel zstd libzstd-devel git-core gperf lua-socket luarocks texinfo git rsync gettext-devel
     pip install --upgrade seesaw
     [... pretty much the same as above ...]
+
+Tested with EL7 repositories.
+
+### For Fedora:
+
+The same as CentOS but with "dnf" instead of "yum". Did not successfully test compiling, so far.
 
 ### For openSUSE:
 
@@ -163,5 +178,5 @@ Are you a developer? Help write code for us! Look at our [developer documentatio
 
 ### Other problems
 
-Have an issue not listed here? Join us on IRC and ask! We can be found on IRC hackint #shreddit.
+Have an issue not listed here? Join us on IRC and ask! We can be found at hackint IRC #shreddit.
 
