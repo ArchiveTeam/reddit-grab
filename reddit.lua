@@ -92,6 +92,11 @@ allowed = function(url, parenturl)
       parenturl
       and string.match(parenturl, "^https?://[^/]*reddit%.com/r/[^/]+/duplicates/")
       and string.match(url, "^https?://[^/]*reddit%.com/r/[^/]+/duplicates/")
+    )
+    or not (
+      string.match(url, "^https?://[^/]*redd%.it/")
+      or string.match(url, "^https?://[^/]*reddit%.com/")
+      or string.match(url, "^https?://[^/]*redditmedia%.com/")
     ) then
     return false
   end
@@ -274,19 +279,38 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     elseif string.match(url, "^https?://www%.reddit%.com/r/[^/]+/comments/[^/]")
       or string.match(url, "^https?://www%.reddit%.com/comments/[^/]")
       or string.match(url, "^https?://gateway%.reddit%.com/desktopapi/v1/morecomments/t3_[^%?]") then
-      for s in string.gmatch(html, '"token"%s*:%s*"([^"]+)"') do
-        local post_data = '{"token":"' .. s .. '"}'
-        local comment_id = string.match(url, "^https?://www%.reddit%.com/r/[^/]+/comments/([^/]+)")
-        if comment_id == nil then
-          comment_id = string.match(url, "^https?://www%.reddit%.com/comments/([^/]+)")
-        end
-        if comment_id == nil then
-          comment_id = string.match(url, "^https?://gateway%.reddit%.com/desktopapi/v1/morecomments/t3_([^%?]+)")
-        end
-        if comment_id == nil then
-          print("Could not find comment ID.")
+      local comments_data = nil
+      if string.match(url, "^https?://www%.reddit%.com/") then
+        comments_data = string.match(html, '<script%s+id="data">%s*window%.___r%s*=%s*({.+});%s*</script>%s*<script>')
+        if comments_data == nil then
+          print("Could not find comments data.")
           abortgrab = true
         end
+        comments_data = load_json_file(comments_data)["moreComments"]["models"]
+      elseif string.match(url, "^https?://gateway%.reddit%.com/") then
+        comments_data = load_json_file(html)["moreComments"]
+      end
+      if comments_data == nil then
+        print("Error handling comments data.")
+        abortgrab = true
+      end
+      local comment_id = string.match(url, "^https?://www%.reddit%.com/r/[^/]+/comments/([^/]+)")
+      if comment_id == nil then
+        comment_id = string.match(url, "^https?://www%.reddit%.com/comments/([^/]+)")
+      end
+      if comment_id == nil then
+        comment_id = string.match(url, "^https?://gateway%.reddit%.com/desktopapi/v1/morecomments/t3_([^%?]+)")
+      end
+      if comment_id == nil then
+        print("Could not find comment ID.")
+        abortgrab = true
+      end
+      for _, d in pairs(comments_data) do
+        if d["token"] == nil then
+          print("Could not find token.")
+          abortgrab = true
+        end
+        local post_data = '{"token":"' .. d["token"] .. '"}'
         if not requested_children[post_data] then
           requested_children[post_data] = true
           table.insert(urls, {url=
