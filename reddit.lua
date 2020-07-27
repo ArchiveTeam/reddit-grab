@@ -240,8 +240,11 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     and not string.match(url, "^https?://out%.reddit%.com/")
     and not string.match(url, "^https?://[^%.]*preview%.redd%.it/")
     and not string.match(url, "^https?://i%.redd%.it/")
-    and not string.match(url, "^https?://v%.redd%.it/[^/]+/[^%.]*%.ts")
-    and not string.match(url, "^https?://v%.redd%.it/[^/]+/[^%.]*%.mp4") then
+    and not (
+      string.match(url, "^https?://v%.redd%.it/")
+      and not string.match(url, "%.m3u8")
+      and not string.match(url, "%.mpd")
+    ) then
     html = read_file(file)
     if string.match(url, "^https?://old%.reddit%.com/api/morechildren$") then
       html = string.gsub(html, '\\"', '"')
