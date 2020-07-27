@@ -54,9 +54,9 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20200726.06'
+VERSION = '20200727.01'
 USER_AGENT = 'Archive Team'
-TRACKER_ID = 'reddittest'
+TRACKER_ID = 'reddit'
 TRACKER_HOST = 'trackerproxy.meo.ws'
 
 
@@ -161,7 +161,7 @@ class ZstdDict(object):
         if cls.data is not None and time.time() - cls.created < 1800:
             return cls.data
         response = requests.get(
-            'http://tracker.archiveteam.org:25654/dictionary',
+            'http://trackerproxy.meo.ws:25654/dictionary',
             params={
                 'project': 'reddit'
             }
