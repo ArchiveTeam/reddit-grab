@@ -93,6 +93,11 @@ allowed = function(url, parenturl)
       and string.match(parenturl, "^https?://[^/]*reddit%.com/r/[^/]+/duplicates/")
       and string.match(url, "^https?://[^/]*reddit%.com/r/[^/]+/duplicates/")
     )
+    or (
+      parenturl
+      and string.match(parenturl, "^https?://[^/]*reddit%.com/user/[^/]+/duplicates/")
+      and string.match(url, "^https?://[^/]*reddit%.com/user/[^/]+/duplicates/")
+    )
     or not (
       string.match(url, "^https?://[^/]*redd%.it/")
       or string.match(url, "^https?://[^/]*reddit%.com/")
@@ -277,6 +282,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         end
       end
     elseif string.match(url, "^https?://www%.reddit%.com/r/[^/]+/comments/[^/]")
+      or string.match(url, "^https?://www%.reddit%.com/user/[^/]+/comments/[^/]")
       or string.match(url, "^https?://www%.reddit%.com/comments/[^/]")
       or string.match(url, "^https?://gateway%.reddit%.com/desktopapi/v1/morecomments/t3_[^%?]") then
       local comments_data = nil
@@ -295,6 +301,9 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         abortgrab = true
       end
       local comment_id = string.match(url, "^https?://www%.reddit%.com/r/[^/]+/comments/([^/]+)")
+      if comment_id == nil then
+        comment_id = string.match(url, "^https?://www%.reddit%.com/user/[^/]+/comments/([^/]+)")
+      end
       if comment_id == nil then
         comment_id = string.match(url, "^https?://www%.reddit%.com/comments/([^/]+)")
       end
