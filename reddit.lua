@@ -86,7 +86,10 @@ allowed = function(url, parenturl)
     )
     or (
       item_type == "posts"
-      and string.match(url, "^https?://[^/]*reddit%.com/r/[^/]+/comments/[0-9a-z]+/[^/]+/[0-9a-z]+/?$")
+      and (
+        string.match(url, "^https?://[^/]*reddit%.com/r/[^/]+/comments/[0-9a-z]+/[^/]+/[0-9a-z]+/?$")
+        or string.match(url, "^https?://[^/]*reddit%.com/r/[^/]+/comments/[0-9a-z]+/[^/]+/[0-9a-z]+/?%?utm_source=")
+      )
     )
     or (
       parenturl
