@@ -59,7 +59,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20210108.01'
+VERSION = '20210108.02'
 USER_AGENT = 'Archive Team'
 TRACKER_ID = 'reddittest'
 TRACKER_HOST = 'trackerproxy.archiveteam.org'
@@ -308,7 +308,7 @@ pipeline = Pipeline(
         },
         id_function=stats_id_function,
     ),
-    #MoveFiles(),
+    MoveFiles(),
     LimitConcurrent(NumberConfigValue(min=1, max=20, default='20',
         name='shared:rsync_threads', title='Rsync threads',
         description='The maximum number of concurrent uploads.'),
