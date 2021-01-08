@@ -4,10 +4,17 @@ local urlparse = require("socket.url")
 local http = require("socket.http")
 JSON = (loadfile "JSON.lua")()
 
-local item_type = os.getenv('item_type')
-local item_value = os.getenv('item_value')
+local item_names = os.getenv('item_names')
 local item_dir = os.getenv('item_dir')
 local warc_file_base = os.getenv('warc_file_base')
+
+local item_types = {}
+for s in string.gmatch(item_names, "([^\n]+)") do
+  local t, n = string.match(s, "^([^:]+):(.+)$")
+  item_types[n] = t
+end
+
+local item_type = nil
 
 if urlparse == nil or http == nil then
   io.stdout:write("socket not corrently installed.\n")
@@ -70,12 +77,13 @@ allowed = function(url, parenturl)
   end
 
   if string.match(url, "'+")
-    or string.match(url, "[<>\\%*%$;%^%[%],%(%){}]")
+    or string.match(urlparse.unescape(url), "[<>\\%*%$;%^%[%],%(%){}]")
     or string.match(url, "^https?://[^/]*reddit%.com/[^%?]+%?context=[0-9]+&depth=[0-9]+")
     or string.match(url, "^https?://[^/]*reddit%.com/[^%?]+%?depth=[0-9]+&context=[0-9]+")
     or string.match(url, "^https?://[^/]*reddit%.com/login")
     or string.match(url, "^https?://[^/]*reddit%.com/register")
     or string.match(url, "%?sort=")
+    or string.match(url, "%?utm_source=reddit")
     or string.match(url, "%?limit=500$")
     or string.match(url, "%?ref=readnext$")
     or string.match(url, "^https?://[^/]*reddit%.app%.link/")
@@ -222,21 +230,27 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     elseif string.match(newurl, "^https?:\\/\\?/") then
       check(string.gsub(newurl, "\\", ""))
     elseif string.match(newurl, "^\\/\\/") then
-      check(string.match(url, "^(https?:)") .. string.gsub(newurl, "\\", ""))
+      checknewurl(string.gsub(newurl, "\\", ""))
     elseif string.match(newurl, "^//") then
-      check(string.match(url, "^(https?:)") .. newurl)
+      check(urlparse.absolute(url, newurl))
     elseif string.match(newurl, "^\\/") then
-      check(string.match(url, "^(https?://[^/]+)") .. string.gsub(newurl, "\\", ""))
+      checknewurl(string.gsub(newurl, "\\", ""))
     elseif string.match(newurl, "^/") then
-      check(string.match(url, "^(https?://[^/]+)") .. newurl)
+      check(urlparse.absolute(url, newurl))
+    elseif string.match(newurl, "^%.%./") then
+      if string.match(url, "^https?://[^/]+/[^/]+/") then
+        check(urlparse.absolute(url, newurl))
+      else
+        checknewurl(string.match(newurl, "^%.%.(/.+)$"))
+      end
     elseif string.match(newurl, "^%./") then
-      checknewurl(string.match(newurl, "^%.(.+)"))
+      check(urlparse.absolute(url, newurl))
     end
   end
 
   local function checknewshorturl(newurl)
     if string.match(newurl, "^%?") then
-      check(string.match(url, "^(https?://[^%?]+)") .. newurl)
+      check(urlparse.absolute(url, newurl))
     elseif not (string.match(newurl, "^https?:\\?/\\?//?/?")
       or string.match(newurl, "^[/\\]")
       or string.match(newurl, "^%./")
@@ -248,7 +262,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       or string.match(newurl, "^data:")
       or string.match(newurl, "^irc:")
       or string.match(newurl, "^%${")) then
-      check(string.match(url, "^(https?://.+/)") .. newurl)
+      check(urlparse.absolute(url, "/" .. newurl))
     end
   end
 
@@ -369,6 +383,22 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         end
       end
     end
+    if string.match(url, "^https?://www%.reddit.com/api/info%.json%?id=t") then
+      json = load_json_file(html)
+      if not json or not json["data"] or not json["data"]["children"] then
+        io.stdout:write("Could not load JSON.\n")
+        io.stdout:flush()
+        abortgrab = true
+      end
+      for _, child in pairs(json["data"]["children"]) do
+        if not child["data"] or not child["data"]["permalink"] then
+          io.stdout:write("Permalink is missing.\n")
+          io.stdout:flush()
+          abortgrab = true
+        end
+        checknewurl(child["data"]["permalink"])
+      end
+    end
     for newurl in string.gmatch(string.gsub(html, "&quot;", '"'), '([^"]+)') do
       checknewurl(newurl)
     end
@@ -402,22 +432,29 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
   local match = string.match(url["url"], "^https?://www%.reddit.com/api/info%.json%?id=t[0-9]_([a-z0-9]+)$")
   if match then
     posts[match] = true
+    if not item_types[match] then
+      io.stdout:write("Type for ID not found.\n")
+      io.stdout:flush()
+      abortgrab = true
+    end
+    item_type = item_types[match]
   end
 
   if status_code == 204 then
     return wget.actions.EXIT
   end
 
-  if (status_code >= 300 and status_code <= 399) then
-    local newloc = string.match(http_stat["newloc"], "^([^#]+)")
-    if string.match(newloc, "^//") then
-      newloc = string.match(url["url"], "^(https?:)") .. string.match(newloc, "^//(.+)")
-    elseif string.match(newloc, "^/") then
-      newloc = string.match(url["url"], "^(https?://[^/]+)") .. newloc
-    elseif not string.match(newloc, "^https?://") then
-      newloc = string.match(url["url"], "^(https?://.+/)") .. newloc
+  if status_code >= 300 and status_code <= 399 then
+    local newloc = urlparse.absolute(url["url"], http_stat["newloc"])
+    if string.match(newloc, "inactive%.min")
+      or string.match(newloc, "ReturnUrl")
+      or string.match(newloc, "adultcontent") then
+      io.stdout:write("Found invalid redirect.\n")
+      io.stdout:flush()
+      abortgrab = true
     end
     if processed(newloc) or not allowed(newloc, url["url"]) then
+      tries = 0
       return wget.actions.EXIT
     end
   end

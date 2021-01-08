@@ -41,12 +41,7 @@ if StrictVersion(seesaw.__version__) < StrictVersion('0.8.5'):
 
 WGET_AT = find_executable(
     'Wget+AT',
-    [
-        'GNU Wget 1.20.3-at.20200401.01',
-        'GNU Wget 1.20.3-at.20200804.01',
-        'GNU Wget 1.20.3-at.20200902.01',
-        'GNU Wget 1.20.3-at.20201030.01'
-    ],
+    ['GNU Wget 1.20.3-at.20201030.01'],
     ['./wget-at']
 )
 
@@ -112,7 +107,8 @@ class PrepareDirectories(SimpleTask):
 
     def process(self, item):
         item_name = item['item_name']
-        escaped_item_name = item_name.replace(':', '_').replace('/', '_').replace('~', '_')
+        item_name_hash = hashlib.sha1(item_name.encode('utf8')).hexdigest()
+        escaped_item_name = item_name_hash
         dirname = '/'.join((item['data_dir'], escaped_item_name))
 
         if os.path.isdir(dirname):
@@ -121,8 +117,11 @@ class PrepareDirectories(SimpleTask):
         os.makedirs(dirname)
 
         item['item_dir'] = dirname
-        item['warc_file_base'] = '%s-%s-%s' % (self.warc_prefix, escaped_item_name[:50],
-            time.strftime('%Y%m%d-%H%M%S'))
+        item['warc_file_base'] = '-'.join([
+            self.warc_prefix,
+            item_name_hash,
+            time.strftime('%Y%m%d-%H%M%S')
+        ])
 
         open('%(item_dir)s/%(warc_file_base)s.warc.zst' % item, 'w').close()
         open('%(item_dir)s/%(warc_file_base)s_data.txt' % item, 'w').close()
@@ -227,11 +226,12 @@ class WgetArgs(object):
             '--waitretry', '30',
             '--warc-file', ItemInterpolation('%(item_dir)s/%(warc_file_base)s'),
             '--warc-header', 'operator: Archive Team',
-            '--warc-header', 'reddit-dld-script-version: ' + VERSION,
-            '--warc-header', ItemInterpolation('reddit-item: %(item_name)s'),
+            '--warc-header', 'x-wget-at-project-version: ' + VERSION,
+            '--warc-header', 'x-wget-at-project-name: ' + TRACKER_ID,
             '--warc-dedup-url-agnostic',
             '--warc-compression-use-zstd',
-            '--warc-zstd-dict-no-include'
+            '--warc-zstd-dict-no-include',
+            '--header', 'Accept-Language: en-US;q=0.9, en;q=0.8'
         ]
 
         dict_data = ZstdDict.get_dict()
@@ -243,21 +243,21 @@ class WgetArgs(object):
             '--warc-zstd-dict', ItemInterpolation('%(item_dir)s/zstdict'),
         ])
 
-        item_name = item['item_name']
-        item_type, item_value = item_name.split(':', 1)
+        for item_name in item['item_name'].split('\0'):
+          wget_args.extend(['--warc-header', 'x-wget-at-project-item-name: '+item_name])
+          wget_args.append('item-name://'+item_name)
+          item_type, item_value = item_name.split(':', 1)
+          if item_type in ('post', 'comment'):
+              if item_type == 'post':
+                  wget_args.extend(['--warc-header', 'reddit-post: '+item_value])
+                  wget_args.append('https://www.reddit.com/api/info.json?id=t3_'+item_value)
+              elif item_type == 'comment':
+                  wget_args.extend(['--warc-header', 'reddit-comment: '+item_value])
+                  wget_args.append('https://www.reddit.com/api/info.json?id=t1_'+item_value)
+          else:
+              raise Exception('Unknown item')
 
-        item['item_type'] = item_type
-        item['item_value'] = item_value
-
-        if item_type in ('post', 'comment'):
-            if item_type == 'post':
-                wget_args.extend(['--warc-header', 'reddit-post: {}'.format(item_value)])
-                wget_args.append('https://www.reddit.com/api/info.json?id=t3_{}'.format(item_value))
-            elif item_type == 'comment':
-                wget_args.extend(['--warc-header', 'reddit-comment: {}'.format(item_value)])
-                wget_args.append('https://www.reddit.com/api/info.json?id=t1_{}'.format(item_value))
-        else:
-            raise Exception('Unknown item')
+        item['item_name_newline'] = item['item_name'].replace('\0', '\n')
 
         if 'bind_address' in globals():
             wget_args.extend(['--bind-address', globals()['bind_address']])
@@ -294,8 +294,7 @@ pipeline = Pipeline(
         accept_on_exit_code=[0, 4, 8],
         env={
             'item_dir': ItemValue('item_dir'),
-            'item_value': ItemValue('item_value'),
-            'item_type': ItemValue('item_type'),
+            'item_names': ItemValue('item_name_newline'),
             'warc_file_base': ItemValue('warc_file_base'),
         }
     ),
