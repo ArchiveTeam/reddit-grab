@@ -96,6 +96,9 @@ allowed = function(url, parenturl)
       string.match(url, "^https?://gateway%.reddit%.com/")
       and not string.match(url, "/morecomments/")
     )
+    or (
+      string.match(url, "^https?://old%.[^%?]+%?utm_source=reddit")
+    )
     or string.match(url, "/%.rss$")
     or (
       parenturl
