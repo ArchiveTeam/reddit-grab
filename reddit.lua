@@ -77,13 +77,12 @@ allowed = function(url, parenturl)
   end
 
   if string.match(url, "'+")
-    or string.match(urlparse.unescape(url), "[<>\\%*%$;%^%[%],%(%){}]")
+    or string.match(urlparse.unescape(url), "[<>\\%$%^%[%]%(%){}]")
     or string.match(url, "^https?://[^/]*reddit%.com/[^%?]+%?context=[0-9]+&depth=[0-9]+")
     or string.match(url, "^https?://[^/]*reddit%.com/[^%?]+%?depth=[0-9]+&context=[0-9]+")
     or string.match(url, "^https?://[^/]*reddit%.com/login")
     or string.match(url, "^https?://[^/]*reddit%.com/register")
     or string.match(url, "%?sort=")
-    or string.match(url, "%?utm_source=reddit")
     or string.match(url, "%?limit=500$")
     or string.match(url, "%?ref=readnext$")
     or string.match(url, "^https?://[^/]*reddit%.app%.link/")
@@ -251,7 +250,8 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
   local function checknewshorturl(newurl)
     if string.match(newurl, "^%?") then
       check(urlparse.absolute(url, newurl))
-    elseif not (string.match(newurl, "^https?:\\?/\\?//?/?")
+    elseif not (
+      string.match(newurl, "^https?:\\?/\\?//?/?")
       or string.match(newurl, "^[/\\]")
       or string.match(newurl, "^%./")
       or string.match(newurl, "^[jJ]ava[sS]cript:")
@@ -261,8 +261,9 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       or string.match(newurl, "^ios%-app:")
       or string.match(newurl, "^data:")
       or string.match(newurl, "^irc:")
-      or string.match(newurl, "^%${")) then
-      check(urlparse.absolute(url, "/" .. newurl))
+      or string.match(newurl, "^%${")
+    ) then
+      check(urlparse.absolute(url, newurl))
     end
   end
 
