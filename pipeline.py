@@ -59,10 +59,11 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20201031.01'
+VERSION = '20210108.01'
 USER_AGENT = 'Archive Team'
 TRACKER_ID = 'reddittest'
 TRACKER_HOST = 'trackerproxy.archiveteam.org'
+MULTI_ITEM_SIZE = 20
 
 
 ###########################################################################
@@ -243,21 +244,18 @@ class WgetArgs(object):
         ])
 
         item_name = item['item_name']
-        item_type, item_value = item_name.split('.', 1)
+        item_type, item_value = item_name.split(':', 1)
 
         item['item_type'] = item_type
         item['item_value'] = item_value
 
-        if item_type in ('posts', 'comments'):
-            start, end = item_value.split('-')
-            for i in range(int(start), int(end)+1):
-                post_id = self.int_to_str(i)
-                if item_type == 'posts':
-                    wget_args.extend(['--warc-header', 'reddit-post: {}'.format(post_id)])
-                    wget_args.append('https://www.reddit.com/api/info.json?id=t3_{}'.format(post_id))
-                elif item_type == 'comments':
-                    wget_args.extend(['--warc-header', 'reddit-comment: {}'.format(post_id)])
-                    wget_args.append('https://www.reddit.com/api/info.json?id=t1_{}'.format(post_id))
+        if item_type in ('post', 'comment'):
+            if item_type == 'post':
+                wget_args.extend(['--warc-header', 'reddit-post: {}'.format(item_value)])
+                wget_args.append('https://www.reddit.com/api/info.json?id=t3_{}'.format(item_value))
+            elif item_type == 'comment':
+                wget_args.extend(['--warc-header', 'reddit-comment: {}'.format(item_value)])
+                wget_args.append('https://www.reddit.com/api/info.json?id=t1_{}'.format(item_value))
         else:
             raise Exception('Unknown item')
 
@@ -286,8 +284,9 @@ project = Project(
 
 pipeline = Pipeline(
     CheckIP(),
-    GetItemFromTracker('http://%s/%s' % (TRACKER_HOST, TRACKER_ID), downloader,
-        VERSION),
+    GetItemFromTracker('http://{}/{}/multi={}/'
+        .format(TRACKER_HOST, TRACKER_ID, MULTI_ITEM_SIZE),
+        downloader, VERSION),
     PrepareDirectories(warc_prefix='reddit'),
     WgetDownload(
         WgetArgs(),
@@ -309,7 +308,7 @@ pipeline = Pipeline(
         },
         id_function=stats_id_function,
     ),
-    MoveFiles(),
+    #MoveFiles(),
     LimitConcurrent(NumberConfigValue(min=1, max=20, default='20',
         name='shared:rsync_threads', title='Rsync threads',
         description='The maximum number of concurrent uploads.'),
