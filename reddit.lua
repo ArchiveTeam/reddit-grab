@@ -1,11 +1,19 @@
 dofile("table_show.lua")
 dofile("urlcode.lua")
+local urlparse = require("socket.url")
+local http = require("socket.http")
 JSON = (loadfile "JSON.lua")()
 
 local item_type = os.getenv('item_type')
 local item_value = os.getenv('item_value')
 local item_dir = os.getenv('item_dir')
 local warc_file_base = os.getenv('warc_file_base')
+
+if urlparse == nil or http == nil then
+  io.stdout:write("socket not corrently installed.\n")
+  io.stdout:flush()
+  abortgrab = true
+end
 
 local url_count = 0
 local tries = 0
@@ -16,6 +24,8 @@ local abortgrab = false
 local posts = {}
 local requested_children = {}
 local thumbs = {}
+
+local outlinks = {}
 
 for ignore in io.open("ignore-list", "r"):lines() do
   downloaded[ignore] = true
@@ -85,7 +95,7 @@ allowed = function(url, parenturl)
       and string.match(url, "^https?://amp%.reddit%.com/")
     )
     or (
-      item_type == "posts"
+      item_type == "post"
       and (
         string.match(url, "^https?://[^/]*reddit%.com/r/[^/]+/comments/[0-9a-z]+/[^/]+/[0-9a-z]+/?$")
         or string.match(url, "^https?://[^/]*reddit%.com/r/[^/]+/comments/[0-9a-z]+/[^/]+/[0-9a-z]+/?%?utm_source=")
@@ -100,11 +110,6 @@ allowed = function(url, parenturl)
       parenturl
       and string.match(parenturl, "^https?://[^/]*reddit%.com/user/[^/]+/duplicates/")
       and string.match(url, "^https?://[^/]*reddit%.com/user/[^/]+/duplicates/")
-    )
-    or not (
-      string.match(url, "^https?://[^/]*redd%.it/")
-      or string.match(url, "^https?://[^/]*reddit%.com/")
-      or string.match(url, "^https?://[^/]*redditmedia%.com/")
     ) then
     return false
   end
@@ -118,6 +123,17 @@ allowed = function(url, parenturl)
       return false
     end
     tested[s] = tested[s] + 1
+  end
+
+  if not (
+    string.match(url, "^https?://[^/]*redd%.it/")
+    or string.match(url, "^https?://[^/]*reddit%.com/")
+    or string.match(url, "^https?://[^/]*redditmedia%.com/")
+  ) then
+    if not string.match(url, "^https?://[^/]*redditstatic%.com/") then
+      outlinks[url] = true
+    end
+    return false
   end
 
   if url .. "/" == parenturl then
@@ -151,7 +167,7 @@ wget.callbacks.download_child_p = function(urlpos, parent, depth, start_url_pars
   local url = urlpos["url"]["url"]
   local html = urlpos["link_expect_html"]
 
-  if item_type == "comments" then
+  if item_type == "comment" then
     return false
   end
 
@@ -453,6 +469,35 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
   end
 
   return wget.actions.NOTHING
+end
+
+wget.callbacks.finish = function(start_time, end_time, wall_time, numurls, total_downloaded_bytes, total_download_time)
+  local items = nil
+  for item, _ in pairs(outlinks) do
+    print('found item', item)
+    if items == nil then
+      items = item
+    else
+      items = items .. "\0" .. item
+    end
+  end
+  if items ~= nil then
+    local tries = 0
+    while tries < 10 do
+      local body, code, headers, status = http.request(
+        "http://blackbird-amqp.meo.ws:23038/urls-t05crln9brluand/",
+        items
+      )
+      if code == 200 or code == 409 then
+        break
+      end
+      os.execute("sleep " .. math.floor(math.pow(2, tries)))
+      tries = tries + 1
+    end
+    if tries == 10 then
+      abortgrab = true
+    end
+  end
 end
 
 wget.callbacks.before_exit = function(exit_status, exit_status_string)
