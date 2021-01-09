@@ -92,12 +92,11 @@ allowed = function(url, parenturl)
     or string.match(url, "^https?://old%.reddit%.com/gallery/")
     or string.match(url, "^https?://old%.reddit%.com/gold%?")
     or string.match(url, "^https?://[^%.]+%.redd%.it/award_images/")
+    or string.match(url, "^https?://[^/]+/over18.+dest=https%%3A%%2F%%2Fold%.reddit%.com")
+    or string.match(url, "^https?://old%.[^%?]+%?utm_source=reddit")
     or (
       string.match(url, "^https?://gateway%.reddit%.com/")
       and not string.match(url, "/morecomments/")
-    )
-    or (
-      string.match(url, "^https?://old%.[^%?]+%?utm_source=reddit")
     )
     or string.match(url, "/%.rss$")
     or (
