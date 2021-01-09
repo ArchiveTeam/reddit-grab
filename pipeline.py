@@ -54,8 +54,8 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20210108.09'
-USER_AGENT = 'Archive Team'
+VERSION = '20210109.01'
+USER_AGENT = 'Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Safari/537.36'
 TRACKER_ID = 'reddit'
 TRACKER_HOST = 'trackerproxy.archiveteam.org'
 MULTI_ITEM_SIZE = 20
