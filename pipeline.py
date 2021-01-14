@@ -54,8 +54,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20210109.01'
-USER_AGENT = 'Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Safari/537.36'
+VERSION = '20210114.01'
 TRACKER_ID = 'reddit'
 TRACKER_HOST = 'trackerproxy.archiveteam.org'
 MULTI_ITEM_SIZE = 20
@@ -202,9 +201,11 @@ class WgetArgs(object):
         return self.post_chars[m]
 
     def realize(self, item):
+        with open('user-agents', 'r') as f:
+            user_agent = random.choice(list(f)).strip()
         wget_args = [
             WGET_AT,
-            '-U', USER_AGENT,
+            '-U', user_agent,
             '-nv',
             '--no-cookies',
             '--content-on-error',
