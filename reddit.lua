@@ -194,8 +194,10 @@ wget.callbacks.download_child_p = function(urlpos, parent, depth, start_url_pars
     return true
   end
 
+  url = string.gsub(url, "&amp;", "&")
+
   if not processed(url)
-      and (allowed(url, parent["url"]) or (allowed(parent["url"]) and html == 0)) then
+    and (allowed(url, parent["url"]) or (allowed(parent["url"]) and html == 0)) then
     addedtolist[url] = true
     return true
   end

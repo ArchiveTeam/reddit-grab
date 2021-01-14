@@ -54,7 +54,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20210114.03'
+VERSION = '20210114.04'
 TRACKER_ID = 'reddit'
 TRACKER_HOST = 'trackerproxy.archiveteam.org'
 MULTI_ITEM_SIZE = 20
@@ -207,7 +207,7 @@ class WgetArgs(object):
             WGET_AT,
             '-U', user_agent,
             '-nv',
-            '--no-cookies',
+            '--load-cookies', 'cookies.txt',
             '--content-on-error',
             '--lua-script', 'reddit.lua',
             '-o', ItemInterpolation('%(item_dir)s/wget.log'),
@@ -222,7 +222,6 @@ class WgetArgs(object):
             '--timeout', '30',
             '--tries', 'inf',
             '--domains', 'reddit.com',
-            '--header', 'Cookie: over18=1; _options=%7B%22pref_quarantine_optin%22%3A%20true%7D',
             '--span-hosts',
             '--waitretry', '30',
             '--warc-file', ItemInterpolation('%(item_dir)s/%(warc_file_base)s'),
