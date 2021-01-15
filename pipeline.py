@@ -54,7 +54,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20210114.04'
+VERSION = '20210115.01'
 TRACKER_ID = 'reddit'
 TRACKER_HOST = 'trackerproxy.archiveteam.org'
 MULTI_ITEM_SIZE = 20
@@ -209,6 +209,7 @@ class WgetArgs(object):
             '-nv',
             '--load-cookies', 'cookies.txt',
             '--content-on-error',
+            '--no-http-keep-alive',
             '--lua-script', 'reddit.lua',
             '-o', ItemInterpolation('%(item_dir)s/wget.log'),
             '--no-check-certificate',
