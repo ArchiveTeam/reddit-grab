@@ -7,14 +7,15 @@ JSON = (loadfile "JSON.lua")()
 local item_names = os.getenv('item_names')
 local item_dir = os.getenv('item_dir')
 local warc_file_base = os.getenv('warc_file_base')
+local item_type = nil
+local item_name = nil
+local item_value = nil
 
 local item_types = {}
 for s in string.gmatch(item_names, "([^\n]+)") do
   local t, n = string.match(s, "^([^:]+):(.+)$")
   item_types[n] = t
 end
-
-local item_type = nil
 
 if urlparse == nil or http == nil then
   io.stdout:write("socket not corrently installed.\n")
@@ -34,8 +35,22 @@ local thumbs = {}
 
 local outlinks = {}
 
+local bad_items = {}
+
 for ignore in io.open("ignore-list", "r"):lines() do
   downloaded[ignore] = true
+end
+
+abort_item = function(item)
+  abortgrab = true
+  if not item then
+    item = item_name
+  end
+  if not bad_items[item] then
+    io.stdout:write("Aborting item " .. item .. ".\n")
+    io.stdout:flush()
+    bad_items[item] = true
+  end
 end
 
 load_json_file = function(file)
@@ -214,7 +229,10 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
   local function check(urla)
     local origurl = url
     local url = string.match(urla, "^([^#]+)")
-    local url_ = string.gsub(string.match(url, "^(.-)%.?$"), "&amp;", "&")
+    local url_ = string.match(url, "^(.-)%.?$")
+    while string.find(url_, "&amp;") do
+      url_ = string.gsub(url_, "&amp;", "&")
+    end
     if not processed(url_)
         and string.match(url_, "^https?://.+")
         and allowed(url_, origurl)
@@ -328,7 +346,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         comments_data = string.match(html, '<script%s+id="data">%s*window%.___r%s*=%s*({.+});%s*</script>%s*<script>')
         if comments_data == nil then
           print("Could not find comments data.")
-          abortgrab = true
+          abort_item()
         end
         comments_data = load_json_file(comments_data)["moreComments"]["models"]
       elseif string.match(url, "^https?://gateway%.reddit%.com/") then
@@ -336,7 +354,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       end
       if comments_data == nil then
         print("Error handling comments data.")
-        abortgrab = true
+        abort_item()
       end
       local comment_id = string.match(url, "^https?://www%.reddit%.com/r/[^/]+/comments/([^/]+)")
       if comment_id == nil then
@@ -350,12 +368,12 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       end
       if comment_id == nil then
         print("Could not find comment ID.")
-        abortgrab = true
+        abort_item()
       end
       for _, d in pairs(comments_data) do
         if d["token"] == nil then
           print("Could not find token.")
-          abortgrab = true
+          abort_item()
         end
         local post_data = '{"token":"' .. d["token"] .. '"}'
         if not requested_children[post_data] then
@@ -393,13 +411,13 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       if not json or not json["data"] or not json["data"]["children"] then
         io.stdout:write("Could not load JSON.\n")
         io.stdout:flush()
-        abortgrab = true
+        abort_item()
       end
       for _, child in pairs(json["data"]["children"]) do
         if not child["data"] or not child["data"]["permalink"] then
           io.stdout:write("Permalink is missing.\n")
           io.stdout:flush()
-          abortgrab = true
+          abort_item()
         end
         checknewurl(child["data"]["permalink"])
       end
@@ -436,13 +454,16 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
 
   local match = string.match(url["url"], "^https?://www%.reddit.com/api/info%.json%?id=t[0-9]_([a-z0-9]+)$")
   if match then
+    abortgrab = false
     posts[match] = true
     if not item_types[match] then
       io.stdout:write("Type for ID not found.\n")
       io.stdout:flush()
-      abortgrab = true
+      abort_item()
     end
     item_type = item_types[match]
+    item_value = match
+    item_name = item_type .. ":" .. item_value
   end
 
   if status_code == 204 then
@@ -456,7 +477,7 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
       or string.match(newloc, "adultcontent") then
       io.stdout:write("Found invalid redirect.\n")
       io.stdout:flush()
-      abortgrab = true
+      abort_item()
     end
     if processed(newloc) or not allowed(newloc, url["url"]) then
       tries = 0
@@ -470,8 +491,8 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
   end
 
   if abortgrab then
-    io.stdout:write("ABORTING...\n")
-    return wget.actions.ABORT
+    abort_item()
+    return wget.actions.EXIT
   end
   
   if status_code >= 500
@@ -514,6 +535,11 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
 end
 
 wget.callbacks.finish = function(start_time, end_time, wall_time, numurls, total_downloaded_bytes, total_download_time)
+  local file = io.open(item_dir .. '/' .. warc_file_base .. '_bad-items.txt', 'w')
+  for url, _ in pairs(bad_items) do
+    file:write(url .. "\n")
+  end
+  file:close()
   local items = nil
   for item, _ in pairs(outlinks) do
     print('found item', item)
@@ -537,14 +563,14 @@ wget.callbacks.finish = function(start_time, end_time, wall_time, numurls, total
       tries = tries + 1
     end
     if tries == 10 then
-      abortgrab = true
+      abort_item()
     end
   end
 end
 
 wget.callbacks.before_exit = function(exit_status, exit_status_string)
   if abortgrab then
-    return wget.exits.IO_FAIL
+    abort_item()
   end
   return exit_status
 end

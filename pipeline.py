@@ -54,7 +54,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20210115.01'
+VERSION = '20210130.01'
 TRACKER_ID = 'reddit'
 TRACKER_HOST = 'trackerproxy.archiveteam.org'
 MULTI_ITEM_SIZE = 20
@@ -136,6 +136,31 @@ class MoveFiles(SimpleTask):
               '%(data_dir)s/%(warc_file_base)s_data.txt' % item)
 
         shutil.rmtree('%(item_dir)s' % item)
+
+
+class SetBadUrls(SimpleTask):
+    def __init__(self):
+        SimpleTask.__init__(self, 'SetBadUrls')
+
+    def process(self, item):
+        item['item_name_original'] = item['item_name']
+        items = item['item_name'].split('\0')
+        items_lower = [s.lower() for s in items]
+        with open('%(item_dir)s/%(warc_file_base)s_bad-items.txt' % item, 'r') as f:
+            for aborted_item in f:
+                aborted_item = aborted_item.strip().lower()
+                index = items_lower.index(aborted_item)
+                item.log_output('Item {} is aborted.'.format(aborted_item))
+                items.pop(index)
+                items_lower.pop(index)
+        item['item_name'] = '\0'.join(items)
+
+
+class MaybeSendDoneToTracker(SendDoneToTracker):
+    def enqueue(self, item):
+        if len(item['item_name']) == 0:
+            return self.complete_item(item)
+        return super(MaybeSendDoneToTracker, self).enqueue(item)
 
 
 def get_hash(filename):
@@ -299,6 +324,7 @@ pipeline = Pipeline(
             'warc_file_base': ItemValue('warc_file_base'),
         }
     ),
+    SetBadUrls(),
     PrepareStatsForTracker(
         defaults={'downloader': downloader, 'version': VERSION},
         file_groups={
@@ -331,7 +357,7 @@ pipeline = Pipeline(
             ]
         ),
     ),
-    SendDoneToTracker(
+    MaybeSendDoneToTracker(
         tracker_url='http://%s/%s' % (TRACKER_HOST, TRACKER_ID),
         stats=ItemValue('stats')
     )
