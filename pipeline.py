@@ -44,7 +44,7 @@ WGET_AT = find_executable(
     ['GNU Wget 1.20.3-at.20201030.01'],
     [
          './wget-at',
-         '/home/warrior/data/wget-at'
+         '/home/warrior/data/wget-at-gnutls'
     ]
 )
 
@@ -57,7 +57,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20210130.02'
+VERSION = '20210203.01'
 TRACKER_ID = 'reddit'
 TRACKER_HOST = 'legacy-api.arpa.li'
 MULTI_ITEM_SIZE = 20
