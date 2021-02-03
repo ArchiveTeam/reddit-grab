@@ -59,7 +59,7 @@ if not WGET_AT:
 # It will be added to the WARC files and reported to the tracker.
 VERSION = '20210130.02'
 TRACKER_ID = 'reddit'
-TRACKER_HOST = 'trackerproxy.archiveteam.org'
+TRACKER_HOST = 'legacy-api.arpa.li'
 MULTI_ITEM_SIZE = 20
 
 
