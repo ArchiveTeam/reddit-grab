@@ -312,6 +312,9 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       and not string.match(url, "%.mpd")
     ) then
     html = read_file(file)
+    if string.match(url, "^https?://www%.reddit%.com/[^/]+/[^/]+/comments/[0-9a-z]+/[^/]+/[0-9a-z]*/?$") then
+      check(url .. "?utm_source=reddit&utm_medium=web2x&context=3")
+    end
     if string.match(url, "^https?://old%.reddit%.com/api/morechildren$") then
       html = string.gsub(html, '\\"', '"')
     elseif string.match(url, "^https?://old%.reddit%.com/r/[^/]+/comments/")
