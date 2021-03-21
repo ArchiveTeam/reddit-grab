@@ -100,6 +100,7 @@ allowed = function(url, parenturl)
     or string.match(url, "%?sort=")
     or string.match(url, "%?limit=500$")
     or string.match(url, "%?ref=readnext$")
+    or string.match(url, "^https?://v%.redd%.it/.+%?source=fallback$")
     or string.match(url, "^https?://[^/]*reddit%.app%.link/")
     or string.match(url, "^https?://out%.reddit%.com/r/")
     or string.match(url, "^https?://emoji%.redditmedia%.com/")
@@ -398,15 +399,69 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       end
     end
     if string.match(url, "^https?://v%.redd%.it/[^/]+/[^%.]+%.mpd") then
+      local max_size = 0
+      local max_size_url = nil
       for s in string.gmatch(html, "<BaseURL>([^<]+)</BaseURL>") do
-        checknewshorturl(s)
+        local size = string.match(s, "([0-9]+)%.mp4")
+        if size then
+          size = tonumber(size)
+          if size > max_size then
+            max_size = size
+            max_size_url = s
+          end
+        else
+          checknewshorturl(s)
+        end
+      end
+      if max_size_url then
+        checknewshorturl(max_size_url)
       end
     end
     if string.match(url, "^https?://v%.redd%.it/[^/]+/[^%.]+%.m3u8") then
+      local bandwidth = 0
+      local url = nil
+      local has_uri = nil
       for s in string.gmatch(html, "(.-)\n") do
-        if not string.match(s, "^#") then
+        if string.match(s, "^#") then
+          local uri = string.match(s, 'URI="([^"]+)"')
+          if (uri and not has_uri) or (not uri and has_uri) then
+            if url then
+              checknewshorturl(url)
+            end
+            bandwidth = 0
+            url = nil
+          end
+          local n = string.match(s, "BANDWIDTH=([0-9]+)")
+          if n then
+            n = tonumber(n)
+          end
+          if uri then
+            has_uri = true
+            if n then
+              if n > bandwidth then
+                bandwidth = n
+                url = uri
+              end
+            else
+              checknewshorturl(uri)
+            end
+          elseif n then
+            has_uri = false
+            if n > bandwidth then
+              bandwidth = n
+              url = nil
+            end
+          end
+        elseif not string.find(s, ".m3u8") then
           checknewshorturl(s)
+        else
+          if not has_uri and not url then
+            url = s
+          end
         end
+      end
+      if url then
+        checknewshorturl(url)
       end
     end
     if string.match(url, "^https?://www%.reddit.com/api/info%.json%?id=t") then
