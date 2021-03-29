@@ -11,6 +11,8 @@ local item_type = nil
 local item_name = nil
 local item_value = nil
 
+local selftext = nil
+
 local item_types = {}
 for s in string.gmatch(item_names, "([^\n]+)") do
   local t, n = string.match(s, "^([^:]+):(.+)$")
@@ -477,6 +479,12 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           io.stdout:flush()
           abort_item()
         end
+        if selftext then
+          io.stdout:write("sefltext already found.\n")
+          io.stdout:flush()
+          abort_item()
+        end
+        selftext = child["data"]["selftext"]
         checknewurl(child["data"]["permalink"])
       end
     end
@@ -513,6 +521,7 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
   local match = string.match(url["url"], "^https?://www%.reddit.com/api/info%.json%?id=t[0-9]_([a-z0-9]+)$")
   if match then
     abortgrab = false
+    selftext = nil
     posts[match] = true
     if not item_types[match] then
       io.stdout:write("Type for ID not found.\n")
@@ -550,6 +559,11 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
 
   if abortgrab then
     abort_item()
+    return wget.actions.EXIT
+  end
+
+  if status_code == 403 and string.match(url["url"], "^https?://v%.redd%.it/")
+    and selftext == "[deleted]" then
     return wget.actions.EXIT
   end
   
