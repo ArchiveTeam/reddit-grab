@@ -178,6 +178,12 @@ allowed = function(url, parenturl)
       or string.match(url, "^https?://[^%.]*preview%.redd%.it/.")
     )
     and not string.match(item_type, "comment") then
+    if parenturl
+      and string.match(parenturl, "^https?://www%.reddit.com/api/info%.json%?id=t")
+      and not string.match(url, "^https?://v%.redd%.it/")
+      and not string.find(url, "thumbs.") then
+      return false
+    end
     return true
   end
 
