@@ -243,18 +243,20 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     local origurl = url
     local url = string.match(urla, "^([^#]+)")
     local url_ = string.match(url, "^(.-)%.?$")
-    url_ = string.gsub(
-      url_, "\\[uU]([0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F])",
-      function (s)
-        local i = tonumber(s, 16)
-        if i < 128 then
-          return string.char(i)
-        else
-          -- should not have these
-          abort_item()
+    if not string.find(url, "v.redd.it") then
+      url_ = string.gsub(
+        url_, "\\[uU]([0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F])",
+        function (s)
+          local i = tonumber(s, 16)
+          if i < 128 then
+            return string.char(i)
+          else
+            -- should not have these
+            abort_item()
+          end
         end
-      end
-    )
+      )
+    end
     while string.find(url_, "&amp;") do
       url_ = string.gsub(url_, "&amp;", "&")
     end
