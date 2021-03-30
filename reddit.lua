@@ -122,6 +122,10 @@ allowed = function(url, parenturl)
       and string.match(url, "^https?://amp%.reddit%.com/")
     )
     or (
+      parenturl
+      and string.match(url, "^https?://v%.redd%.it/[^/]+/HLSPlaylist%.m3u8")
+    )
+    or (
       item_type == "post"
       and (
         string.match(url, "^https?://[^/]*reddit%.com/r/[^/]+/comments/[0-9a-z]+/[^/]+/[0-9a-z]+/?$")
@@ -239,6 +243,18 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     local origurl = url
     local url = string.match(urla, "^([^#]+)")
     local url_ = string.match(url, "^(.-)%.?$")
+    url_ = string.gsub(
+      url_, "\\[uU]([0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F])",
+      function (s)
+        local i = tonumber(s, 16)
+        if i < 128 then
+          return string.char(i)
+        else
+          -- should not have these
+          abort_item()
+        end
+      end
+    )
     while string.find(url_, "&amp;") do
       url_ = string.gsub(url_, "&amp;", "&")
     end
