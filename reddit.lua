@@ -486,7 +486,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           abort_item()
         end
         if selftext then
-          io.stdout:write("sefltext already found.\n")
+          io.stdout:write("selftext already found.\n")
           io.stdout:flush()
           abort_item()
         end
