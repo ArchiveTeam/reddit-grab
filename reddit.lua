@@ -178,6 +178,7 @@ allowed = function(url, parenturl)
 
   if (string.match(url, "^https?://[^/]*redditmedia%.com/")
       or string.match(url, "^https?://v%.redd%.it/")
+      or string.match(url, "^https?://[^/]*reddit%.com/video/")
       or string.match(url, "^https?://i%.redd%.it/")
       or string.match(url, "^https?://[^%.]*preview%.redd%.it/.")
     )
@@ -185,6 +186,7 @@ allowed = function(url, parenturl)
     if parenturl
       and string.match(parenturl, "^https?://www%.reddit.com/api/info%.json%?id=t")
       and not string.match(url, "^https?://v%.redd%.it/")
+      and not string.match(url, "^https?://[^/]*reddit%.com/video/")
       and not string.find(url, "thumbs.") then
       return false
     end
@@ -243,7 +245,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     local origurl = url
     local url = string.match(urla, "^([^#]+)")
     local url_ = string.match(url, "^(.-)%.?$")
-    if not string.find(url, "v.redd.it") then
+    if not string.find(url, "old.reddit.com") then
       url_ = string.gsub(
         url_, "\\[uU]([0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F])",
         function (s)
@@ -261,9 +263,9 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       url_ = string.gsub(url_, "&amp;", "&")
     end
     if not processed(url_)
-        and string.match(url_, "^https?://.+")
-        and allowed(url_, origurl)
-        and not (string.match(url_, "[^/]$") and processed(url_ .. "/")) then
+      and string.match(url_, "^https?://.+")
+      and allowed(url_, origurl)
+      and not (string.match(url_, "[^/]$") and processed(url_ .. "/")) then
       table.insert(urls, { url=url_ })
       addedtolist[url_] = true
       addedtolist[url] = true
@@ -510,6 +512,11 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         end
         selftext = child["data"]["selftext"]
         checknewurl(child["data"]["permalink"])
+        if child["data"]["is_video"] and not child["data"]["secure_media"] then
+          io.stdout:write("Video still being processed.\n")
+          io.stdout:flush()
+          abort_item()
+        end
       end
     end
     for newurl in string.gmatch(string.gsub(html, "&quot;", '"'), '([^"]+)') do
