@@ -42,9 +42,7 @@ if StrictVersion(seesaw.__version__) < StrictVersion('0.8.5'):
 WGET_AT = find_executable(
     'Wget+AT',
     [
-		'GNU Wget 1.20.3-at.20210410.01',
-		'GNU Wget 1.20.3-at.20210212.02',
-	    	'GNU Wget 1.20.3-at.20210504.01'
+		'GNU Wget 1.20.3-at.20210504.01'
 	],
     [
          './wget-at',
@@ -61,7 +59,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20210410.01'
+VERSION = '20210521.01'
 TRACKER_ID = 'reddit'
 TRACKER_HOST = 'legacy-api.arpa.li'
 MULTI_ITEM_SIZE = 20
@@ -264,9 +262,9 @@ class WgetArgs(object):
             '--warc-dedup-url-agnostic',
             '--warc-compression-use-zstd',
             '--warc-zstd-dict-no-include',
-            '--header', 'Accept-Language: en-US;q=0.9, en;q=0.8'
+            '--header', 'Accept-Language: en-US;q=0.9, en;q=0.8',
+            '--secure-protocol', 'TLSv1_2'
         ]
-
         dict_data = ZstdDict.get_dict()
         with open(os.path.join(item['item_dir'], 'zstdict'), 'wb') as f:
             f.write(dict_data['dict'])

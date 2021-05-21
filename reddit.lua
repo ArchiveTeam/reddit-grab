@@ -662,6 +662,8 @@ wget.callbacks.finish = function(start_time, end_time, wall_time, numurls, total
       if code == 200 or code == 409 then
         break
       end
+      io.stdout:write("Could not queue items.\n")
+      io.stdout:flush()
       os.execute("sleep " .. math.floor(math.pow(2, tries)))
       tries = tries + 1
     end
