@@ -34,6 +34,7 @@ local abortgrab = false
 local posts = {}
 local requested_children = {}
 local thumbs = {}
+local is_crosspost = false
 
 local outlinks = {}
 
@@ -182,7 +183,8 @@ allowed = function(url, parenturl)
       or string.match(url, "^https?://i%.redd%.it/")
       or string.match(url, "^https?://[^%.]*preview%.redd%.it/.")
     )
-    and not string.match(item_type, "comment") then
+    and not string.match(item_type, "comment")
+    and not is_crosspost then
     if parenturl
       and string.match(parenturl, "^https?://www%.reddit.com/api/info%.json%?id=t")
       and not string.match(url, "^https?://v%.redd%.it/")
@@ -517,6 +519,10 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           io.stdout:flush()
           abort_item()
         end
+        local crosspost_parent = child["data"]["crosspost_parent"]
+        if crosspost_parent and crosspost_parent ~= string.match(url, "(t[0-9]_[a-z0-9]+)") then
+          is_crosspost = true
+        end
       end
     end
     for newurl in string.gmatch(string.gsub(html, "&quot;", '"'), '([^"]+)') do
@@ -553,6 +559,7 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
   if match then
     abortgrab = false
     selftext = nil
+    is_crosspost = false
     posts[match] = true
     if not item_types[match] then
       io.stdout:write("Type for ID not found.\n")
