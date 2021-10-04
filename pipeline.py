@@ -59,7 +59,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20211004.01'
+VERSION = '20211004.02'
 TRACKER_ID = 'reddit'
 TRACKER_HOST = 'legacy-api.arpa.li'
 MULTI_ITEM_SIZE = 20
@@ -90,7 +90,7 @@ class CheckIP(SimpleTask):
             ip_set.add(socket.gethostbyname('icanhas.cheezburger.com'))
             ip_set.add(socket.gethostbyname('archiveteam.org'))
 
-            if len(ip_set) != 6:
+            if len(ip_set) != 5:
                 item.log_output('Got IP addresses: {0}'.format(ip_set))
                 item.log_output(
                     'Are you behind a firewall/proxy? That is a big no-no!')
