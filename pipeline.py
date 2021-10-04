@@ -59,7 +59,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20211001.01'
+VERSION = '20211004.01'
 TRACKER_ID = 'reddit'
 TRACKER_HOST = 'legacy-api.arpa.li'
 MULTI_ITEM_SIZE = 20
@@ -84,7 +84,7 @@ class CheckIP(SimpleTask):
             ip_set = set()
 
             ip_set.add(socket.gethostbyname('twitter.com'))
-            ip_set.add(socket.gethostbyname('facebook.com'))
+            #ip_set.add(socket.gethostbyname('facebook.com'))
             ip_set.add(socket.gethostbyname('youtube.com'))
             ip_set.add(socket.gethostbyname('microsoft.com'))
             ip_set.add(socket.gethostbyname('icanhas.cheezburger.com'))
