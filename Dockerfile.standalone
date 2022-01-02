@@ -1,0 +1,52 @@
+#####################################
+# Build stage for wget-at on Alpine #
+#####################################
+FROM alpine:3.15 AS builder
+
+WORKDIR /app
+
+# Install all build dependencies required for wget-at on Alpine
+RUN apk update && apk add --no-cache lua5.1 git gcc libc-dev lua5.1-dev zlib-dev gnutls-dev zstd-dev zstd automake autoconf make bash bzip2 rsync flex gettext gettext-dev xz gperf texinfo wget coreutils ca-certificates
+
+RUN git clone https://github.com/ArchiveTeam/reddit-grab
+
+# Fix a minor version issue with zstd version not available on Alpine. Using 1.5.0 rather than 1.4.4 originally
+RUN cd reddit-grab && sed -i 's/1.4.4/1.5.0/g' get-wget-lua.sh && ./get-wget-lua.sh
+
+
+###############################################################
+# Create the final image with actual reddit-grab project code #
+###############################################################
+FROM alpine:3.15
+
+# Install dependencies for building zstandard (virtual) which will be removed afterwards
+RUN apk update && apk add --no-cache --virtual .build-deps gcc libc-dev python3-dev
+
+# Install required dependencies for runtime, python, wget-at shared lua libs, ...
+RUN apk add --no-cache python3 py3-pip rsync ca-certificates git lua5.1 lua5.1-socket gnutls-dev zstd-dev
+
+# Add non-root user and install python dependencies
+RUN adduser archiveteam -D
+WORKDIR /home/archiveteam
+USER archiveteam
+
+RUN git clone https://github.com/ArchiveTeam/reddit-grab
+RUN cd reddit-grab && python3 -m venv --prompt at .venv && source .venv/bin/activate && \
+    pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir --upgrade seesaw zstandard requests
+
+# Cleanup to reduce image size
+USER root
+RUN apk del .build-deps
+
+# Back to non root
+USER archiveteam
+
+# We only take the wget-at binary build for alpine from previous stage
+COPY --from=builder --chown=archiveteam /app/reddit-grab/wget-at ./reddit-grab/
+
+# Add entrypoint.sh and run the project
+COPY --chown=archiveteam entrypoint.sh ./ 
+RUN chmod +x ./entrypoint.sh
+
+ENTRYPOINT ["/home/archiveteam/entrypoint.sh"]

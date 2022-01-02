@@ -5,3 +5,6 @@ wget-at
 STOP
 BANNED
 data/
+
+# the user can/has to adapt the entrypoint.sh.standalone.example file so we exclude it here.
+entrypoint.sh
