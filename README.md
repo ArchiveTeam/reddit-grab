@@ -127,17 +127,35 @@ Ensure that you have the Arch equivalent of bzip2 installed as well.
 6. `screen su -c "cd /home/archiveteam/reddit-grab/; run-pipeline pipeline.py --concurrent 2 --address '127.0.0.1' YOURNICKHERE" archiveteam`
 
 ### For Alpine Linux:
-
-    apk add lua5.1 git python bzip2 bash rsync gcc libc-dev lua5.1-dev zlib-dev gnutls-dev autoconf flex make
-    python -m ensurepip
-    pip install -U seesaw
-    git clone https://github.com/ArchiveTeam/reddit-grab
-    cd reddit-grab; ./get-wget-lua.sh
-    run-pipeline pipeline.py --concurrent 2 --address '127.0.0.1' YOURNICKHERE
+    # Dependencies for wget-at & zstandard
+    apk update &&  apk add lua5.1 lua5.1-socket python3 py3-pip git gcc libc-dev \ 
+        lua5.1-dev zlib-dev gnutls-dev zstd-dev zstd automake autoconf make bash \
+        bzip2 rsync flex gettext gettext-dev xz gperf texinfo wget coreutils ca-certificates
+    git clone https://github.com/ArchiveTeam/reddit-grab.git
+    cd reddit-grab
+    ./get-wget-lua.sh
+    # if you want to use a virtualenv (sh/bash example)
+    python3 -m venv --prompt at .venv && source .venv/bin/activate
+    pip install --upgrade pip setuptools wheel
+    pip install --upgrade seesaw zstandard requests
+    run-pipeline3 pipeline.py --concurrent 2 --address '127.0.0.1' YOURNICKHERE
 
 ### For FreeBSD:
 
 Honestly, I have no idea. `./get-wget-lua.sh` supposedly doesn't work due to differences in the `tar` that ships with FreeBSD. Another problem is the apparent absence of Lua 5.1 development headers. If you figure this out, please do let us know on IRC (irc.efnet.org #archiveteam).
+
+Standalone Docker Container
+=========================
+If you want to run the reddit-grab project as a standalone (& self build from source) Alpine based docker container you can take a look at `Dockerfile.standalone` & `entrypoint.sh.standalone.example`. 
+To build the image you need to rename the example entrypoint script to `entrypoint.sh` and can configure it to your liking.
+Example of building & running the container after `entrypoint.sh` has been adapted:
+
+    git clone https://github.com/ArchiveTeam/reddit-grab.git
+    cd reddit-grab
+    docker build -t reddit-grab-standalone -f Dockerfile.standalone .
+    docker run --name reddit-grab-standalone -e USERNAME=YOURNICKHERE -e CONCURRENCY=2 reddit-grab-standalone
+
+
 
 Troubleshooting
 =========================
