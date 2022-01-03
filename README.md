@@ -129,11 +129,23 @@ Ensure that you have the Arch equivalent of bzip2 installed as well.
 ### For Alpine Linux:
     # Dependencies for wget-at & zstandard
     apk update &&  apk add lua5.1 lua5.1-socket python3 py3-pip git gcc libc-dev \ 
-        lua5.1-dev zlib-dev gnutls-dev zstd-dev zstd automake autoconf make bash \
+        lua5.1-dev zlib-dev gnutls-dev automake autoconf make bash \
         bzip2 rsync flex gettext gettext-dev xz gperf texinfo wget coreutils ca-certificates
+
+    # We need to build zstd 1.4.4 from source for compatibility with arguments provided from other Alpine builds
+    # Source: https://git.alpinelinux.org/aports/tree/main/zstd/APKBUILD?h=3.15-stable
+    git clone https://github.com/facebook/zstd.git --depth 1 --branch v1.4.4
+    cd zstd && export CFLAGS="-O2" && \
+        make -C lib HAVE_PTHREAD=1 HAVE_ZLIB=0 HAVE_LZMA=0 HAVE_LZ4=0 lib-mt && \
+        make -C programs HAVE_PTHREAD=1 HAVE_ZLIB=0 HAVE_LZMA=0 HAVE_LZ4=0 && \
+        make -C contrib/pzstd && \
+        make PREFIX="/usr" install && \
+        cd ..
+    
+    # Proceed as normal
     git clone https://github.com/ArchiveTeam/reddit-grab.git
-    cd reddit-grab
-    ./get-wget-lua.sh
+    cd reddit-grab && ./get-wget-lua.sh
+    
     # if you want to use a virtualenv (sh/bash example)
     python3 -m venv --prompt at .venv && source .venv/bin/activate
     pip install --upgrade pip setuptools wheel
@@ -143,19 +155,6 @@ Ensure that you have the Arch equivalent of bzip2 installed as well.
 ### For FreeBSD:
 
 Honestly, I have no idea. `./get-wget-lua.sh` supposedly doesn't work due to differences in the `tar` that ships with FreeBSD. Another problem is the apparent absence of Lua 5.1 development headers. If you figure this out, please do let us know on IRC (irc.efnet.org #archiveteam).
-
-Standalone Docker Container
-=========================
-If you want to run the reddit-grab project as a standalone (& self build from source) Alpine based docker container you can take a look at `Dockerfile.standalone` & `entrypoint.sh.standalone.example`. 
-To build the image you need to rename the example entrypoint script to `entrypoint.sh` and can configure it to your liking.
-Example of building & running the container after `entrypoint.sh` has been adapted:
-
-    git clone https://github.com/ArchiveTeam/reddit-grab.git
-    cd reddit-grab
-    docker build -t reddit-grab-standalone -f Dockerfile.standalone .
-    docker run --name reddit-grab-standalone -e USERNAME=YOURNICKHERE -e CONCURRENCY=2 reddit-grab-standalone
-
-
 
 Troubleshooting
 =========================
