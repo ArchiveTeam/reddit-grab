@@ -301,7 +301,7 @@ function OBJDEF:newObject(tbl)
    return setmetatable(tbl or {}, isObject)
 end
 
-local function unicode_codepoint_as_utf8(codepoint)
+function unicode_codepoint_as_utf8(codepoint)
    --
    -- codepoint is a number
    --

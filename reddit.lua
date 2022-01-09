@@ -163,6 +163,15 @@ allowed = function(url, parenturl)
     or string.match(url, "^https?://[^/]*redditmedia%.com/")
   ) then
     if not string.match(url, "^https?://[^/]*redditstatic%.com/") then
+      local temp = ""
+      for c in string.gmatch(url, "(.)") do
+        local b = string.byte(c)
+        if b < 32 or b > 126 then
+          c = string.format("%%%02X", b)
+        end
+        temp = temp .. c
+      end
+      url = temp
       outlinks[url] = true
     end
     return false
@@ -251,13 +260,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       url_ = string.gsub(
         url_, "\\[uU]([0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F])",
         function (s)
-          local i = tonumber(s, 16)
-          if i < 128 then
-            return string.char(i)
-          else
-            -- should not have these
-            abort_item()
-          end
+          return unicode_codepoint_as_utf8(tonumber(s, 16))
         end
       )
     end
