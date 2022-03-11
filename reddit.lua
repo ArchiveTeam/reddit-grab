@@ -666,8 +666,8 @@ wget.callbacks.finish = function(start_time, end_time, wall_time, numurls, total
     local tries = 0
     while tries < 10 do
       local body, code, headers, status = http.request(
-        "http://blackbird-amqp.meo.ws:23038/urls-t05crln9brluand/",
-        items
+        "https://legacy-api.arpa.li/backfeed/legacy/urls-dyr8rrotminvxky",
+        items .. "\0"
       )
       if code == 200 or code == 409 then
         break
