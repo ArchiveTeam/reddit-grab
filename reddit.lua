@@ -666,10 +666,11 @@ wget.callbacks.finish = function(start_time, end_time, wall_time, numurls, total
     local tries = 0
     while tries < 10 do
       local body, code, headers, status = http.request(
-        "https://legacy-api.arpa.li/backfeed/legacy/urls-dyr8rrotminvxky",
+        "https://legacy-api.arpa.li/backfeed/legacy/urls-bbpritdbwn5hnp7",
         items .. "\0"
       )
-      if code == 200 or code == 409 then
+      print(body)
+      if code == 200 then
         break
       end
       io.stdout:write("Could not queue items.\n")
