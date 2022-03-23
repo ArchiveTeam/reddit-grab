@@ -648,6 +648,30 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
 end
 
 wget.callbacks.finish = function(start_time, end_time, wall_time, numurls, total_downloaded_bytes, total_download_time)
+  local function submit_backfeed(newurls, key)
+    local tries = 0
+    local maxtries = 4
+    while tries < maxtries do
+      local body, code, headers, status = http.request(
+        "https://legacy-api.arpa.li/backfeed/legacy/" .. key,
+        newurls .. "\0"
+      )
+      print(body)
+      if code == 200 then
+        io.stdout:write("Submitted discovered URLs.\n")
+        io.stdout:flush()
+        break
+      end
+      io.stdout:write("Failed to submit discovered URLs." .. tostring(code) .. tostring(body) .. "\n")
+      io.stdout:flush()
+      os.execute("sleep " .. math.floor(math.pow(2, tries)))
+      tries = tries + 1
+    end
+    if tries == maxtries then
+      abortgrab = true
+    end
+  end
+
   local file = io.open(item_dir .. '/' .. warc_file_base .. '_bad-items.txt', 'w')
   for url, _ in pairs(bad_items) do
     file:write(url .. "\n")
@@ -663,24 +687,7 @@ wget.callbacks.finish = function(start_time, end_time, wall_time, numurls, total
     end
   end
   if items ~= nil then
-    local tries = 0
-    while tries < 10 do
-      local body, code, headers, status = http.request(
-        "https://legacy-api.arpa.li/backfeed/legacy/urls-bbpritdbwn5hnp7",
-        items .. "\0"
-      )
-      print(body)
-      if code == 200 then
-        break
-      end
-      io.stdout:write("Could not queue items.\n")
-      io.stdout:flush()
-      os.execute("sleep " .. math.floor(math.pow(2, tries)))
-      tries = tries + 1
-    end
-    if tries == 10 then
-      abort_item()
-    end
+    submit_backfeed(newurls, "reddit-ldayno5jboa5c0o")
   end
 end
 
