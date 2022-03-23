@@ -677,16 +677,16 @@ wget.callbacks.finish = function(start_time, end_time, wall_time, numurls, total
     file:write(url .. "\n")
   end
   file:close()
-  local items = nil
-  for item, _ in pairs(outlinks) do
-    print('found item', item)
-    if items == nil then
-      items = item
+  local newurls = nil
+  for newurl, _ in pairs(outlinks) do
+    print('found item', newurl)
+    if newurls == nil then
+      newurls = newurl
     else
-      items = items .. "\0" .. item
+      newurls = newurls .. "\0" .. newurl
     end
   end
-  if items ~= nil then
+  if newurls ~= nil then
     submit_backfeed(newurls, "reddit-ldayno5jboa5c0o")
   end
 end
