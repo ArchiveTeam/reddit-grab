@@ -1,3 +1,3 @@
 .reddit.com	TRUE	/	FALSE	0	eu_cookie_v2	3
 .reddit.com	TRUE	/	FALSE	0	over18	1
-.reddit.com	TRUE	/	FALSE	0	_options	%7B%22pref_quarantine_optin%22%3A%20true%7D
+.reddit.com	TRUE	/	FALSE	0	_options	%7B%22pref_quarantine_optin%22%3A%20true%2C%20%22pref_gated_sr_optin%22%3A%20true%7D
