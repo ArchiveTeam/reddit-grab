@@ -30,6 +30,7 @@ local tries = 0
 local downloaded = {}
 local addedtolist = {}
 local abortgrab = false
+local killgrab = false
 
 local posts = {}
 local requested_children = {}
@@ -54,6 +55,11 @@ abort_item = function(item)
     io.stdout:flush()
     bad_items[item] = true
   end
+end
+
+kill_grab = function(item)
+  io.stdout:write("Aborting crawling.\n")
+  killgrab = true
 end
 
 load_json_file = function(file)
@@ -559,6 +565,10 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
   io.stdout:write(url_count .. "=" .. status_code .. " " .. url["url"] .. " \n")
   io.stdout:flush()
 
+  if killgrab then
+    return wget.actions.ABORT
+  end
+
   local match = string.match(url["url"], "^https?://www%.reddit.com/api/info%.json%?id=t[0-9]_([a-z0-9]+)$")
   if match then
     abortgrab = false
@@ -653,6 +663,9 @@ wget.callbacks.finish = function(start_time, end_time, wall_time, numurls, total
     local tries = 0
     local maxtries = 4
     while tries < maxtries do
+      if killgrab then
+        return false
+      end
       local body, code, headers, status = http.request(
         "https://legacy-api.arpa.li/backfeed/legacy/" .. key,
         newurls .. "\0"
@@ -669,7 +682,7 @@ wget.callbacks.finish = function(start_time, end_time, wall_time, numurls, total
       tries = tries + 1
     end
     if tries == maxtries then
-      abortgrab = true
+      kill_grab()
     end
   end
 
@@ -701,6 +714,9 @@ wget.callbacks.finish = function(start_time, end_time, wall_time, numurls, total
 end
 
 wget.callbacks.before_exit = function(exit_status, exit_status_string)
+  if killgrab then
+    return wget.exits.IO_FAIL
+  end
   if abortgrab then
     abort_item()
   end

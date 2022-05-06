@@ -1,7 +1,7 @@
-reddit-grab
+telegram-grab
 =============
 
-More information about the archiving project can be found on the ArchiveTeam wiki: [Reddit](http://archiveteam.org/index.php?title=Reddit)
+More information about the archiving project can be found on the ArchiveTeam wiki: [Telegram](http://archiveteam.org/index.php?title=Telegram)
 
 Setup instructions
 =========================
@@ -15,9 +15,22 @@ In most of the below cases, there will be a web interface running at http://loca
 Running with a warrior
 -------------------------
 
-Follow the [instructions on the ArchiveTeam wiki](http://archiveteam.org/index.php?title=Warrior) for installing the Warrior, and select the "Reddit" project in the Warrior interface.
+Follow the [instructions on the ArchiveTeam wiki](http://archiveteam.org/index.php?title=Warrior) for installing the Warrior, and select the "Telegram" project in the Warrior interface.
 
-Running without a warrior
+Running with Docker
+-------------------------
+
+The recommended way to run these projects is with Docker. The instructions below are a short overview. For more information and detailed explanations of the commands, follow the follow the [Docker instructions on the Archive Team wiki](https://wiki.archiveteam.org/index.php/Running_Archive_Team_Projects_with_Docker).
+
+It is advised to use watchtower to automatically update the project. This requires watchtower:
+
+    docker run --name watchtower --restart=unless-stopped -v /var/run/docker.sock:/var/run/docker.sock containrrr/watchtower --label-enable --cleanup --interval 3600
+
+after which the project can be run:
+
+    docker run --name archiveteam --label=com.centurylinklabs.watchtower.enable=true --restart=unless-stopped atdr.meo.ws/archiveteam/telegram-grab --concurrent 1 YOURNICKHERE
+
+Running without a warrior or Docker
 -------------------------
 To run this outside the warrior, clone this repository, cd into its directory and run:
 
@@ -61,12 +74,12 @@ Package `libzstd-dev` version 1.4.4 is required which is currently available fro
     adduser --system --group --shell /bin/bash archiveteam
     echo deb http://deb.debian.org/debian buster-backports main contrib > /etc/apt/sources.list.d/backports.list
     apt-get update \
-    && apt-get install -y git-core libgnutls-dev lua5.1 liblua5.1-0 liblua5.1-0-dev screen bzip2 zlib1g-dev flex autoconf autopoint texinfo gperf lua-socket rsync automake pkg-config python3-dev python3-pip build-essential \
+    && apt-get install -y git-core libgnutls-dev lua5.1 liblua5.1-0 liblua5.1-0-dev screen bzip2 zlib1g-dev flex autoconf autopoint texinfo gperf lua-socket lua-filesystem lua-sec lua-zip rsync automake pkg-config python3-dev python3-pip build-essential poppler-utils \
     && apt-get -t buster-backports install zstd libzstd-dev libzstd1
     python3 -m pip install setuptools wheel
     python3 -m pip install --upgrade seesaw zstandard requests
-    su -c "cd /home/archiveteam; git clone https://github.com/ArchiveTeam/reddit-grab.git; cd reddit-grab; ./get-wget-lua.sh" archiveteam
-    screen su -c "cd /home/archiveteam/reddit-grab/; run-pipeline pipeline.py --concurrent 2 --address '127.0.0.1' YOURNICKHERE" archiveteam
+    su -c "cd /home/archiveteam; git clone https://github.com/ArchiveTeam/telegram-grab.git; cd telegram-grab; ./get-wget-lua.sh" archiveteam
+    screen su -c "cd /home/archiveteam/telegram-grab/; run-pipeline3 pipeline.py --concurrent 2 --address '127.0.0.1' YOURNICKHERE" archiveteam
     [... ctrl+A D to detach ...]
 
 In __Debian Jessie, Ubuntu 18.04 Bionic and above__, the `libgnutls-dev` package was renamed to `libgnutls28-dev`. So, you need to do the following instead:
@@ -74,13 +87,15 @@ In __Debian Jessie, Ubuntu 18.04 Bionic and above__, the `libgnutls-dev` package
     adduser --system --group --shell /bin/bash archiveteam
     echo deb http://deb.debian.org/debian buster-backports main contrib > /etc/apt/sources.list.d/backports.list
     apt-get update \
-    && apt-get install -y git-core libgnutls28-dev lua5.1 liblua5.1-0 liblua5.1-0-dev screen bzip2 zlib1g-dev flex autoconf autopoint texinfo gperf lua-socket rsync automake pkg-config python3-dev python3-pip build-essential \
+    && apt-get install -y git-core libgnutls28-dev lua5.1 liblua5.1-0 liblua5.1-0-dev screen bzip2 zlib1g-dev flex autoconf autopoint texinfo gperf lua-socket lua-filesystem lua-sec lua-zip rsync automake pkg-config python3-dev python3-pip build-essential poppler-utils \
     && apt-get -t buster-backports install zstd libzstd-dev libzstd1
     [... pretty much the same as above ...]
 
 Wget-lua is also available on [ArchiveTeam's PPA](https://launchpad.net/~archiveteam/+archive/wget-lua) for Ubuntu.
 
 ### For CentOS:
+
+THESE INSTRUCTIONS ARE OUTDATED
 
 Ensure that you have the CentOS equivalent of bzip2 installed as well. You will need the EPEL repository to be enabled.
 
@@ -97,11 +112,15 @@ The same as CentOS but with "dnf" instead of "yum". Did not successfully test co
 
 ### For openSUSE:
 
+THESE INSTRUCTIONS ARE OUTDATES
+
     zypper install liblua5_1 lua51 lua51-devel screen python-pip libgnutls-devel bzip2 python-devel gcc make
     pip install --upgrade seesaw
     [... pretty much the same as above ...]
 
 ### For OS X:
+
+THESE INSTRUCTIONS ARE OUTDATED
 
 You need Homebrew. Ensure that you have the OS X equivalent of bzip2 installed as well.
 
@@ -109,7 +128,7 @@ You need Homebrew. Ensure that you have the OS X equivalent of bzip2 installed a
     pip install --upgrade seesaw
     [... pretty much the same as above ...]
 
-**There is a known issue with some packaged versions of rsync. If you get errors during the upload stage, reddit-grab will not work with your rsync version.**
+**There is a known issue with some packaged versions of rsync. If you get errors during the upload stage, telegram-grab will not work with your rsync version.**
 
 This supposedly fixes it:
 
@@ -124,20 +143,45 @@ Ensure that you have the Arch equivalent of bzip2 installed as well.
 3. Run `pip2 install --upgrade seesaw`.
 4. Modify the run-pipeline script in seesaw to point at `#!/usr/bin/python2` instead of `#!/usr/bin/python`.
 5. `useradd --system --group users --shell /bin/bash --create-home archiveteam`
-6. `screen su -c "cd /home/archiveteam/reddit-grab/; run-pipeline pipeline.py --concurrent 2 --address '127.0.0.1' YOURNICKHERE" archiveteam`
+6. `screen su -c "cd /home/archiveteam/telegram-grab/; run-pipeline pipeline.py --concurrent 2 --address '127.0.0.1' YOURNICKHERE" archiveteam`
 
 ### For Alpine Linux:
 
-    apk add lua5.1 git python bzip2 bash rsync gcc libc-dev lua5.1-dev zlib-dev gnutls-dev autoconf flex make
-    python -m ensurepip
-    pip install -U seesaw
-    git clone https://github.com/ArchiveTeam/reddit-grab
-    cd reddit-grab; ./get-wget-lua.sh
-    run-pipeline pipeline.py --concurrent 2 --address '127.0.0.1' YOURNICKHERE
+
+Install the dependencies for Zstd and Wget-AT:
+
+    apk update &&  apk add lua5.1 lua5.1-socket lua5.1-sec python3 py3-pip git gcc libc-dev \
+        lua5.1-dev lua5.1-filesystem zlib-dev gnutls-dev automake autoconf make bash \
+        bzip2 rsync flex gettext gettext-dev xz gperf texinfo wget coreutils ca-certificates \
+        poppler-utils
+
+Version 1.4.4 of Zstd is required, so this needs to be built from source for compatibility with arguments provided from other Alpine builds:
+
+    # Source: https://git.alpinelinux.org/aports/tree/main/zstd/APKBUILD?h=3.15-stable
+    git clone https://github.com/facebook/zstd.git --depth 1 --branch v1.4.4
+    cd zstd && export CFLAGS="-O2" && \
+        make -C lib HAVE_PTHREAD=1 HAVE_ZLIB=0 HAVE_LZMA=0 HAVE_LZ4=0 lib-mt && \
+        make -C programs HAVE_PTHREAD=1 HAVE_ZLIB=0 HAVE_LZMA=0 HAVE_LZ4=0 && \
+        make -C contrib/pzstd && \
+        make PREFIX="/usr" install && \
+        cd ..
+
+Close the repo and build Wget-AT:
+
+    git clone https://github.com/ArchiveTeam/telegram-grab
+    cd telegram-grab; ./get-wget-lua.sh
+
+Run the project with
+
+    # uncomments the next line if you want to use a virtualenv (sh/bash example)
+    #python3 -m venv --prompt at .venv && source .venv/bin/activate
+    pip install --upgrade pip setuptools wheel
+    pip install --upgrade seesaw zstandard requests
+    run-pipeline3 pipeline.py --concurrent 2 --address '127.0.0.1' YOURNICKHERE
 
 ### For FreeBSD:
 
-Honestly, I have no idea. `./get-wget-lua.sh` supposedly doesn't work due to differences in the `tar` that ships with FreeBSD. Another problem is the apparent absence of Lua 5.1 development headers. If you figure this out, please do let us know on IRC (irc.efnet.org #archiveteam).
+Honestly, I have no idea. `./get-wget-lua.sh` supposedly doesn't work due to differences in the `tar` that ships with FreeBSD. Another problem is the apparent absence of Lua 5.1 development headers. If you figure this out, please do let us know on IRC (irc.hackint.org #archiveteam).
 
 Troubleshooting
 =========================
@@ -180,5 +224,6 @@ Are you a developer? Help write code for us! Look at our [developer documentatio
 
 ### Other problems
 
-Have an issue not listed here? Join us on IRC and ask! We can be found at hackint IRC #shreddit.
+Have an issue not listed here? Join us on IRC and ask! We can be found at hackint IRC [#telegrab](https://webirc.hackint.org/#irc://irc.hackint.org/#telegrab).
+
 
