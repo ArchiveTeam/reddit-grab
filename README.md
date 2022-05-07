@@ -1,7 +1,7 @@
-telegram-grab
+reddit-grab
 =============
 
-More information about the archiving project can be found on the ArchiveTeam wiki: [Telegram](http://archiveteam.org/index.php?title=Telegram)
+More information about the archiving project can be found on the ArchiveTeam wiki: [Reddit](http://archiveteam.org/index.php?title=Reddit)
 
 Setup instructions
 =========================
@@ -15,7 +15,7 @@ In most of the below cases, there will be a web interface running at http://loca
 Running with a warrior
 -------------------------
 
-Follow the [instructions on the ArchiveTeam wiki](http://archiveteam.org/index.php?title=Warrior) for installing the Warrior, and select the "Telegram" project in the Warrior interface.
+Follow the [instructions on the ArchiveTeam wiki](http://archiveteam.org/index.php?title=Warrior) for installing the Warrior, and select the "Reddit" project in the Warrior interface.
 
 Running with Docker
 -------------------------
@@ -28,7 +28,7 @@ It is advised to use watchtower to automatically update the project. This requir
 
 after which the project can be run:
 
-    docker run --name archiveteam --label=com.centurylinklabs.watchtower.enable=true --restart=unless-stopped atdr.meo.ws/archiveteam/telegram-grab --concurrent 1 YOURNICKHERE
+    docker run --name archiveteam --label=com.centurylinklabs.watchtower.enable=true --restart=unless-stopped atdr.meo.ws/archiveteam/reddit-grab --concurrent 1 YOURNICKHERE
 
 Running without a warrior or Docker
 -------------------------
@@ -78,8 +78,8 @@ Package `libzstd-dev` version 1.4.4 is required which is currently available fro
     && apt-get -t buster-backports install zstd libzstd-dev libzstd1
     python3 -m pip install setuptools wheel
     python3 -m pip install --upgrade seesaw zstandard requests
-    su -c "cd /home/archiveteam; git clone https://github.com/ArchiveTeam/telegram-grab.git; cd telegram-grab; ./get-wget-lua.sh" archiveteam
-    screen su -c "cd /home/archiveteam/telegram-grab/; run-pipeline3 pipeline.py --concurrent 2 --address '127.0.0.1' YOURNICKHERE" archiveteam
+    su -c "cd /home/archiveteam; git clone https://github.com/ArchiveTeam/reddit-grab.git; cd reddit-grab; ./get-wget-lua.sh" archiveteam
+    screen su -c "cd /home/archiveteam/reddit-grab/; run-pipeline3 pipeline.py --concurrent 2 --address '127.0.0.1' YOURNICKHERE" archiveteam
     [... ctrl+A D to detach ...]
 
 In __Debian Jessie, Ubuntu 18.04 Bionic and above__, the `libgnutls-dev` package was renamed to `libgnutls28-dev`. So, you need to do the following instead:
@@ -128,7 +128,7 @@ You need Homebrew. Ensure that you have the OS X equivalent of bzip2 installed a
     pip install --upgrade seesaw
     [... pretty much the same as above ...]
 
-**There is a known issue with some packaged versions of rsync. If you get errors during the upload stage, telegram-grab will not work with your rsync version.**
+**There is a known issue with some packaged versions of rsync. If you get errors during the upload stage, reddit-grab will not work with your rsync version.**
 
 This supposedly fixes it:
 
@@ -143,7 +143,7 @@ Ensure that you have the Arch equivalent of bzip2 installed as well.
 3. Run `pip2 install --upgrade seesaw`.
 4. Modify the run-pipeline script in seesaw to point at `#!/usr/bin/python2` instead of `#!/usr/bin/python`.
 5. `useradd --system --group users --shell /bin/bash --create-home archiveteam`
-6. `screen su -c "cd /home/archiveteam/telegram-grab/; run-pipeline pipeline.py --concurrent 2 --address '127.0.0.1' YOURNICKHERE" archiveteam`
+6. `screen su -c "cd /home/archiveteam/reddit-grab/; run-pipeline pipeline.py --concurrent 2 --address '127.0.0.1' YOURNICKHERE" archiveteam`
 
 ### For Alpine Linux:
 
@@ -168,8 +168,8 @@ Version 1.4.4 of Zstd is required, so this needs to be built from source for com
 
 Close the repo and build Wget-AT:
 
-    git clone https://github.com/ArchiveTeam/telegram-grab
-    cd telegram-grab; ./get-wget-lua.sh
+    git clone https://github.com/ArchiveTeam/reddit-grab
+    cd reddit-grab; ./get-wget-lua.sh
 
 Run the project with
 
@@ -224,6 +224,6 @@ Are you a developer? Help write code for us! Look at our [developer documentatio
 
 ### Other problems
 
-Have an issue not listed here? Join us on IRC and ask! We can be found at hackint IRC [#telegrab](https://webirc.hackint.org/#irc://irc.hackint.org/#telegrab).
+Have an issue not listed here? Join us on IRC and ask! We can be found at hackint IRC [#shreddit](https://webirc.hackint.org/#irc://irc.hackint.org/#shreddit).
 
 
