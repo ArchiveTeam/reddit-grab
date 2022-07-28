@@ -90,6 +90,10 @@ end
 
 allowed = function(url, parenturl)
   if item_type == "url" then
+    if url ~= item_value then
+      reddit_media_urls["url:" .. url] = true
+      return false
+    end
     return true
   end
 
