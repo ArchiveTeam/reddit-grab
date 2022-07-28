@@ -204,7 +204,7 @@ allowed = function(url, parenturl)
     if not string.match(url, "^https?://v%.redd%.it/")
       or string.match(url, "%.mp4$")
       or string.match(url, "%.ts$") then
-      reddit_media_urls[url] = true
+      reddit_media_urls["url:" .. url] = true
       return false
     end
     return true
