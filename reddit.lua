@@ -34,10 +34,10 @@ local killgrab = false
 
 local posts = {}
 local requested_children = {}
-local thumbs = {}
 local is_crosspost = false
 
 local outlinks = {}
+local reddit_media_urls = {}
 
 local bad_items = {}
 
@@ -89,15 +89,8 @@ processed = function(url)
 end
 
 allowed = function(url, parenturl)
-  local match = string.match(url, "^https?://[^%.]+%.thumbs%.redditmedia%.com/([^%.]+)%.")
-  if match
-    and parenturl
-    and string.match(parenturl, "^https?://www%.reddit%.com/api/info%.json%?id=") then
-    thumbs[match] = true
-  end
-
-  if match and not thumbs[match] then
-    return false
+  if item_type == "url" then
+    return true
   end
 
   if string.match(url, "'+")
@@ -113,11 +106,8 @@ allowed = function(url, parenturl)
     or string.match(url, "^https?://v%.redd%.it/.+%?source=fallback$")
     or string.match(url, "^https?://[^/]*reddit%.app%.link/")
     or string.match(url, "^https?://out%.reddit%.com/r/")
-    or string.match(url, "^https?://emoji%.redditmedia%.com/")
-    or string.match(url, "^https?://styles%.redditmedia%.com/")
     or string.match(url, "^https?://old%.reddit%.com/gallery/")
     or string.match(url, "^https?://old%.reddit%.com/gold%?")
-    or string.match(url, "^https?://[^%.]+%.redd%.it/award_images/")
     or string.match(url, "^https?://[^/]+/over18.+dest=https%%3A%%2F%%2Fold%.reddit%.com")
     or string.match(url, "^https?://old%.[^%?]+%?utm_source=reddit")
     or (
@@ -189,23 +179,32 @@ allowed = function(url, parenturl)
   end
 
   if string.match(url, "^https?://gateway%.reddit%.com/desktopapi/v1/morecomments/")
-    or string.match(url, "^https?://old%.reddit%.com/api/morechildren$") then
+    or string.match(url, "^https?://old%.reddit%.com/api/morechildren$")
+    or string.match(url, "^https?://[^/]*reddit%.com/video/") then
     return true
   end
 
-  if (string.match(url, "^https?://[^/]*redditmedia%.com/")
+  if (
+      string.match(url, "^https?://[^/]*redditmedia%.com/")
       or string.match(url, "^https?://v%.redd%.it/")
       or string.match(url, "^https?://[^/]*reddit%.com/video/")
       or string.match(url, "^https?://i%.redd%.it/")
       or string.match(url, "^https?://[^%.]*preview%.redd%.it/.")
     )
     and not string.match(item_type, "comment")
+    and not string.match(url, "^https?://[^/]*redditmedia%.com/mediaembed/")
     and not is_crosspost then
     if parenturl
       and string.match(parenturl, "^https?://www%.reddit.com/api/info%.json%?id=t")
       and not string.match(url, "^https?://v%.redd%.it/")
       and not string.match(url, "^https?://[^/]*reddit%.com/video/")
       and not string.find(url, "thumbs.") then
+      return false
+    end
+    if not string.match(url, "^https?://v%.redd%.it/")
+      or string.match(url, "%.mp4$")
+      or string.match(url, "%.ts$") then
+      reddit_media_urls[url] = true
       return false
     end
     return true
@@ -224,7 +223,7 @@ wget.callbacks.download_child_p = function(urlpos, parent, depth, start_url_pars
   local url = urlpos["url"]["url"]
   local html = urlpos["link_expect_html"]
 
-  if item_type == "comment" then
+  if item_type == "comment" or item_type == "url" then
     return false
   end
 
@@ -342,6 +341,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
 
   if allowed(url)
     and status_code < 300
+    and item_type ~= "url"
     and not string.match(url, "^https?://[^/]*redditmedia%.com/")
     and not string.match(url, "^https?://[^/]*redditstatic%.com/")
     and not string.match(url, "^https?://out%.reddit%.com/")
@@ -570,6 +570,9 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
   end
 
   local match = string.match(url["url"], "^https?://www%.reddit.com/api/info%.json%?id=t[0-9]_([a-z0-9]+)$")
+  if not match and item_types[url["url"]] then
+    match = url["url"]
+  end
   if match then
     abortgrab = false
     selftext = nil
@@ -583,6 +586,8 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
     item_type = item_types[match]
     item_value = match
     item_name = item_type .. ":" .. item_value
+    io.stdout:write("Archiving item " .. item_name .. ".\n")
+    io.stdout:flush()
   end
 
   if status_code == 204 then
@@ -624,26 +629,14 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
       or status_code  == 0 then
     io.stdout:write("Server returned " .. http_stat.statcode .. " (" .. err .. "). Sleeping.\n")
     io.stdout:flush()
-    local maxtries = 8
-    if not allowed(url["url"]) then
-        maxtries = 0
-    end
-    if tries >= maxtries then
-      io.stdout:write("\nI give up...\n")
-      io.stdout:flush()
-      tries = 0
-      if allowed(url["url"]) then
-        return wget.actions.ABORT
-      else
-        return wget.actions.EXIT
-      end
-    end
+    abort_item()
     os.execute("sleep " .. math.floor(math.pow(2, tries)))
     tries = tries + 1
     return wget.actions.CONTINUE
   end
 
-  if string.match(url["url"], "^https?://[^/]+%.reddit%.com/api/info%?id=t[0-9]_[a-z0-9]+$") then
+  if string.match(url["url"], "^https?://[^/]+%.reddit%.com/api/info%?id=t[0-9]_[a-z0-9]+$")
+    or item_type == "url" then
     return wget.actions.EXIT
   end
 
@@ -691,25 +684,30 @@ wget.callbacks.finish = function(start_time, end_time, wall_time, numurls, total
     file:write(url .. "\n")
   end
   file:close()
-  local newurls = nil
-  local count = 0
-  local key = "urls-f1zr02i96okrkdv"
-  for newurl, _ in pairs(outlinks) do
-    print('found item', newurl)
-    if newurls == nil then
-      newurls = newurl
-    else
-      newurls = newurls .. "\0" .. newurl
+  for key, data in pairs({
+    ["reddit-v5fj9elcyh0rzck"] = reddit_media_urls,
+    ["urls-f1zr02i96okrkdv"] = outlinks
+  }) do
+    print('queuing for', string.match(key, "^(.+)%-"))--, "on shard", shard)
+    local items = nil
+    local count = 0
+    for item, _ in pairs(data) do
+      print("found item", item)
+      if items == nil then
+        items = item
+      else
+        items = items .. "\0" .. item
+      end
+      count = count + 1
+      if count == 100 then
+        submit_backfeed(items, key)
+        items = nil
+        count = 0
+      end
     end
-    count = count + 1
-    if count == 100 then
-      submit_backfeed(newurls, key)
-      newurls = nil
-      count = 0
+    if items ~= nil then
+      submit_backfeed(items, key)
     end
-  end
-  if newurls ~= nil then
-    submit_backfeed(newurls, key)
   end
 end
 

@@ -42,8 +42,7 @@ if StrictVersion(seesaw.__version__) < StrictVersion('0.8.5'):
 WGET_AT = find_executable(
     'Wget+AT',
     [
-        'GNU Wget 1.20.3-at.20211001.01',
-        'GNU Wget 1.21.3-at.20220503.02'
+        'GNU Wget 1.21.3-at.20220608.02'
     ],
     [
          './wget-at',
@@ -60,7 +59,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20220605.01'
+VERSION = '20220729.01'
 TRACKER_ID = 'reddit'
 TRACKER_HOST = 'legacy-api.arpa.li'
 MULTI_ITEM_SIZE = 20
@@ -279,13 +278,15 @@ class WgetArgs(object):
           wget_args.extend(['--warc-header', 'x-wget-at-project-item-name: '+item_name])
           wget_args.append('item-name://'+item_name)
           item_type, item_value = item_name.split(':', 1)
-          if item_type in ('post', 'comment'):
-              if item_type == 'post':
-                  wget_args.extend(['--warc-header', 'reddit-post: '+item_value])
-                  wget_args.append('https://www.reddit.com/api/info.json?id=t3_'+item_value)
-              elif item_type == 'comment':
-                  wget_args.extend(['--warc-header', 'reddit-comment: '+item_value])
-                  wget_args.append('https://www.reddit.com/api/info.json?id=t1_'+item_value)
+          if item_type == 'post':
+              wget_args.extend(['--warc-header', 'reddit-post: '+item_value])
+              wget_args.append('https://www.reddit.com/api/info.json?id=t3_'+item_value)
+          elif item_type == 'comment':
+              wget_args.extend(['--warc-header', 'reddit-comment: '+item_value])
+              wget_args.append('https://www.reddit.com/api/info.json?id=t1_'+item_value)
+          elif item_type == 'url':
+              wget_args.extend(['--warc-header', 'reddit-media-url: '+item_value])
+              wget_args.append(item_value)
           else:
               raise Exception('Unknown item')
 
