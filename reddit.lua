@@ -623,17 +623,34 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
     return wget.actions.EXIT
   end
 
-  if status_code == 403 and string.match(url["url"], "^https?://v%.redd%.it/")
+  --[[if status_code == 403 and string.match(url["url"], "^https?://v%.redd%.it/")
     and selftext == "[deleted]" then
     return wget.actions.EXIT
-  end
+  end]]
   
   if status_code >= 500
-      or (status_code >= 400 and status_code ~= 404)
-      or status_code  == 0 then
+    or (status_code >= 400 and status_code ~= 404)
+    or status_code  == 0 then
+    if item_type == "url" then
+      abort_item()
+      return wget.actions.EXIT
+    end
     io.stdout:write("Server returned " .. http_stat.statcode .. " (" .. err .. "). Sleeping.\n")
     io.stdout:flush()
-    abort_item()
+    local maxtries = 8
+    if not allowed(url["url"]) then
+        maxtries = 0
+    end
+    if tries >= maxtries then
+      io.stdout:write("\nI give up...\n")
+      io.stdout:flush()
+      tries = 0
+      if allowed(url["url"]) then
+        return wget.actions.ABORT
+      else
+        return wget.actions.EXIT
+      end
+    end
     os.execute("sleep " .. math.floor(math.pow(2, tries)))
     tries = tries + 1
     return wget.actions.CONTINUE
