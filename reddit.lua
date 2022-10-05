@@ -162,19 +162,18 @@ allowed = function(url, parenturl)
     string.match(url, "^https?://[^/]*redd%.it/")
     or string.match(url, "^https?://[^/]*reddit%.com/")
     or string.match(url, "^https?://[^/]*redditmedia%.com/")
+    or string.match(url, "^https?://[^/]*redditstatic%.com/")
   ) then
-    if not string.match(url, "^https?://[^/]*redditstatic%.com/") then
-      local temp = ""
-      for c in string.gmatch(url, "(.)") do
-        local b = string.byte(c)
-        if b < 32 or b > 126 then
-          c = string.format("%%%02X", b)
-        end
-        temp = temp .. c
+    local temp = ""
+    for c in string.gmatch(url, "(.)") do
+      local b = string.byte(c)
+      if b < 32 or b > 126 then
+        c = string.format("%%%02X", b)
       end
-      url = temp
-      outlinks[url] = true
+      temp = temp .. c
     end
+    url = temp
+    outlinks[url] = true
     return false
   end
 
