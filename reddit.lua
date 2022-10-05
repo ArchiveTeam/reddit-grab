@@ -674,7 +674,7 @@ end
 wget.callbacks.finish = function(start_time, end_time, wall_time, numurls, total_downloaded_bytes, total_download_time)
   local function submit_backfeed(newurls, key)
     local tries = 0
-    local maxtries = 4
+    local maxtries = 10
     while tries < maxtries do
       if killgrab then
         return false
