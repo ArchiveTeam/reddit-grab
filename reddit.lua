@@ -115,6 +115,7 @@ allowed = function(url, parenturl)
     or string.match(url, "^https?://old%.reddit%.com/gold%?")
     or string.match(url, "^https?://[^/]+/over18.+dest=https%%3A%%2F%%2Fold%.reddit%.com")
     or string.match(url, "^https?://old%.[^%?]+%?utm_source=reddit")
+    or string.match(url, "/%?context=1$")
     or (
       string.match(url, "^https?://gateway%.reddit%.com/")
       and not string.match(url, "/morecomments/")
@@ -146,6 +147,10 @@ allowed = function(url, parenturl)
       and string.match(url, "^https?://[^/]*reddit%.com/user/[^/]+/duplicates/")
     ) then
     return false
+  end
+
+  if string.match(url, "^https?://www%.reddit%.com/svc/") then
+    return true
   end
 
   local tested = {}
@@ -259,10 +264,15 @@ end
 wget.callbacks.get_urls = function(file, url, is_css, iri)
   local urls = {}
   local html = nil
+  local no_more_svc = false
   
   downloaded[url] = true
 
   local function check(urla)
+    if no_more_svc
+      and string.match(urla, "^https?://[^/]+/svc/") then
+      return nil
+    end
     local origurl = url
     local url = string.match(urla, "^([^#]+)")
     local url_ = string.match(url, "^(.-)%.?$")
@@ -334,7 +344,8 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
   end
 
   if string.match(url, "^https?://www%.reddit%.com/")
-    and not string.match(url, "/api/") then
+    and not string.match(url, "/api/")
+    and not string.match(url, "^https?://[^/]+/svc/") then
     check(string.gsub(url, "^https?://www%.reddit%.com/", "https://old.reddit.com/"))
   end
 
@@ -357,9 +368,9 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       and not string.match(url, "%.mpd")
     ) then
     html = read_file(file)
-    if string.match(url, "^https?://www%.reddit%.com/[^/]+/[^/]+/comments/[0-9a-z]+/[^/]+/[0-9a-z]*/?$") then
+    --[[if string.match(url, "^https?://www%.reddit%.com/[^/]+/[^/]+/comments/[0-9a-z]+/[^/]+/[0-9a-z]*/?$") then
       check(url .. "?utm_source=reddit&utm_medium=web2x&context=3")
-    end
+    end]]
     if string.match(url, "^https?://old%.reddit%.com/api/morechildren$") then
       html = string.gsub(html, '\\"', '"')
     elseif string.match(url, "^https?://old%.reddit%.com/r/[^/]+/comments/")
@@ -385,7 +396,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
                               post_data=post_data})
         end
       end
-    elseif string.match(url, "^https?://www%.reddit%.com/r/[^/]+/comments/[^/]")
+    --[[elseif string.match(url, "^https?://www%.reddit%.com/r/[^/]+/comments/[^/]")
       or string.match(url, "^https?://www%.reddit%.com/user/[^/]+/comments/[^/]")
       or string.match(url, "^https?://www%.reddit%.com/comments/[^/]")
       or string.match(url, "^https?://gateway%.reddit%.com/desktopapi/v1/morecomments/t3_[^%?]") then
@@ -435,7 +446,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
             post_data=post_data
           })
         end
-      end
+      end]]
     end
     if string.match(url, "^https?://gateway%.reddit%.com/desktopapi/v1/morecomments/") then
       for s in string.gmatch(html, '"permalink"%s*:%s*"([^"]+)"') do
@@ -508,6 +519,19 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         checknewshorturl(url)
       end
     end
+    if string.match(url, "^https?://www%.reddit%.com/svc/") then
+      for src_url, cursor in string.gmatch(html, '<faceplate%-partial[^>]+src="([^"]+)"[^>]*>%s*<input%s+type="hidden"%s+name="cursor"%s+value="([^"]+)"%s*/>') do
+        src_url = string.gsub(src_url, "&amp;", "&")
+        local requested_s = src_url .. cursor
+        if not requested_children[requested_s] then
+          print("posting with cursor", cursor)
+          table.insert(urls, {url=
+            urlparse.absolute(url, src_url),
+            post_data="cursor=" .. cursor-- .. "&csrf_token=" .. csrf_token
+          })
+        end
+      end
+    end
     if string.match(url, "^https?://www%.reddit.com/api/info%.json%?id=t") then
       json = load_json_file(html)
       if not json or not json["data"] or not json["data"]["children"] then
@@ -537,8 +561,20 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         if crosspost_parent and crosspost_parent ~= string.match(url, "(t[0-9]_[a-z0-9]+)") then
           is_crosspost = true
         end
+        local id = child["data"]["id"]
+        local subreddit = child["data"]["subreddit"]
+        if child["kind"] == "t1" then
+          check("https://www.reddit.com/svc/shreddit/comments/" .. subreddit .. "/" .. child["data"]["link_id"] .. "/t1_" .. id .. "?render-mode=partial&shredtop=")
+        elseif child["kind"] == "t3" then
+          check("https://www.reddit.com/svc/shreddit/comments/" .. subreddit .. "/t3_" .. id .. "?render-mode=partial")
+        else
+          io.stdout:write("Kind is not supported.\n")
+          io.stdout:flush()
+          abort_item()
+        end
       end
     end
+    no_more_svc = true
     for newurl in string.gmatch(string.gsub(html, "&quot;", '"'), '([^"%s]+)') do
       checknewurl(newurl)
     end
