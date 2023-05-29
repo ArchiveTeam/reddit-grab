@@ -97,6 +97,10 @@ allowed = function(url, parenturl)
     return true
   end
 
+  if string.match(url, "^https?://www%.reddit%.com/svc/") then
+    return true
+  end
+
   if string.match(url, "'+")
     or string.match(urlparse.unescape(url), "[<>\\%$%^%[%]%(%){}]")
     or string.match(url, "^https?://[^/]*reddit%.com/[^%?]+%?context=[0-9]+&depth=[0-9]+")
@@ -147,10 +151,6 @@ allowed = function(url, parenturl)
       and string.match(url, "^https?://[^/]*reddit%.com/user/[^/]+/duplicates/")
     ) then
     return false
-  end
-
-  if string.match(url, "^https?://www%.reddit%.com/svc/") then
-    return true
   end
 
   local tested = {}
@@ -392,6 +392,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
           "&renderstyle=html"
         if not requested_children[post_data] then
           requested_children[post_data] = true
+          print("posting for modechildren with", post_data)
           table.insert(urls, {url="https://old.reddit.com/api/morechildren",
                               post_data=post_data})
         end
@@ -524,10 +525,10 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         src_url = string.gsub(src_url, "&amp;", "&")
         local requested_s = src_url .. cursor
         if not requested_children[requested_s] then
-          print("posting with cursor", cursor)
+          print("posting with cursor", cursor, "to URL", src_url)
           table.insert(urls, {url=
             urlparse.absolute(url, src_url),
-            post_data="cursor=" .. cursor-- .. "&csrf_token=" .. csrf_token
+            post_data="cursor=" .. string.gsub(cursor, "=", "%%3D")-- .. "&csrf_token=" .. csrf_token
           })
         end
       end
