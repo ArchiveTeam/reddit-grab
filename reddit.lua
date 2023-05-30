@@ -744,7 +744,7 @@ wget.callbacks.finish = function(start_time, end_time, wall_time, numurls, total
   file:close()
   for key, data in pairs({
     ["reddit-v5fj9elcyh0rzck"] = reddit_media_urls,
-    ["urls-f1zr02i96okrkdv"] = outlinks
+    ["urls-stash-reddit-spr9ksdojlfvyr6h"] = outlinks
   }) do
     print('queuing for', string.match(key, "^(.+)%-"))--, "on shard", shard)
     local items = nil
