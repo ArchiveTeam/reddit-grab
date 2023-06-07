@@ -121,6 +121,8 @@ allowed = function(url, parenturl)
     or string.match(url, "^https?://[^/]+/over18.+dest=https%%3A%%2F%%2Fold%.reddit%.com")
     or string.match(url, "^https?://old%.[^%?]+%?utm_source=reddit")
     or string.match(url, "/%?context=1$")
+    or string.match(url, '/"$')
+    or string.match(url, "^https?://[^/]+/message/compose")
     or (
       string.match(url, "^https?://gateway%.reddit%.com/")
       and not string.match(url, "/morecomments/")
