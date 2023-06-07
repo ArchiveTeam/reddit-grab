@@ -152,6 +152,11 @@ allowed = function(url, parenturl)
       parenturl
       and string.match(parenturl, "^https?://[^/]*reddit%.com/user/[^/]+/duplicates/")
       and string.match(url, "^https?://[^/]*reddit%.com/user/[^/]+/duplicates/")
+    )
+    or (
+      parenturl
+      and string.match(parenturl, "^https?://[^/]+/r/EASportsFC/")
+      and string.match(url, "^https?://[^/]+/r/FIFA/")
     ) then
     return false
   end
