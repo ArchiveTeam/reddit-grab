@@ -12,6 +12,7 @@ local item_name = nil
 local item_value = nil
 
 local selftext = nil
+local retry_url = true
 
 local item_types = {}
 for s in string.gmatch(item_names, "([^\n]+)") do
@@ -599,26 +600,17 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
   return urls
 end
 
-wget.callbacks.httploop_result = function(url, err, http_stat)
-  status_code = http_stat["statcode"]
-  
-  url_count = url_count + 1
-  io.stdout:write(url_count .. "=" .. status_code .. " " .. url["url"] .. " \n")
-  io.stdout:flush()
-
-  if killgrab then
-    return wget.actions.ABORT
+find_item = function(url)
+  local match = string.match(url, "^https?://www%.reddit.com/api/info%.json%?id=t[0-9]_([a-z0-9]+)$")
+  if not match and item_types[url] then
+    match = url
   end
-
-  local match = string.match(url["url"], "^https?://www%.reddit.com/api/info%.json%?id=t[0-9]_([a-z0-9]+)$")
-  if not match and item_types[url["url"]] then
-    match = url["url"]
-  end
-  if match then
+  if match and not posts[match] then
     abortgrab = false
     selftext = nil
     is_crosspost = false
     posts[match] = true
+    retry_url = false
     if not item_types[match] then
       io.stdout:write("Type for ID not found.\n")
       io.stdout:flush()
@@ -630,11 +622,15 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
     io.stdout:write("Archiving item " .. item_name .. ".\n")
     io.stdout:flush()
   end
+end
 
-  if status_code == 204 then
-    return wget.actions.EXIT
+wget.callbacks.write_to_warc = function(url, http_stat)
+  status_code = http_stat["statcode"]
+  logged_response = true
+  find_item(url["url"])
+  if not item_name then
+    error("No item name found.")
   end
-
   if status_code >= 300 and status_code <= 399 then
     local newloc = urlparse.absolute(url["url"], http_stat["newloc"])
     if string.match(newloc, "inactive%.min")
@@ -642,8 +638,64 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
       or string.match(newloc, "adultcontent") then
       io.stdout:write("Found invalid redirect.\n")
       io.stdout:flush()
-      abort_item()
+      print("Not writing to WARC.")
+      retry_url = true
+      return false
     end
+  end
+  if (
+    http_stat["len"] == 0
+    and status_code == 200
+  ) or (
+    status_code ~= 200
+    and status_code ~= 301
+    and status_code ~= 302
+    and status_code ~= 308
+  ) then
+    print("Not writing to WARC.")
+    retry_url = true
+    return false
+  end
+  if string.match(url["url"], "^https?://www%.reddit%.com/") then
+    local html = read_file(http_stat["local_file"])
+    if (
+      string.match(url["url"], "^https?://[^/]+/r/")
+      and (
+        not string.match(html, "<title>")
+        or not string.match(html, "</html>%s*$")
+      )
+    ) or (
+      string.match(url["url"], "^https?://[^/]+/svc/")
+      and not string.match(html, "</[^<>%s]+>%s*$")
+    ) then
+      retry_url = true
+      return false
+    end
+  end
+  if abortgrab then
+    print("Not writing to WARC.")
+    return false
+  end
+  retry_url = false
+  tries = 0
+  return true
+end
+
+wget.callbacks.httploop_result = function(url, err, http_stat)
+  status_code = http_stat["statcode"]
+  
+  url_count = url_count + 1
+  io.stdout:write(url_count .. "=" .. status_code .. " " .. url["url"] .. " \n")
+  io.stdout:flush()
+
+  if killgrab then
+    return wget.actions.ABORT
+  end
+
+  find_item(url["url"])
+
+  if status_code >= 300 and status_code <= 399 and not retry_url then
+    local newloc = urlparse.absolute(url["url"], http_stat["newloc"])
     if processed(newloc) or not allowed(newloc, url["url"]) then
       tries = 0
       return wget.actions.EXIT
@@ -665,8 +717,7 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
     return wget.actions.EXIT
   end]]
   
-  if status_code >= 500
-    or (status_code >= 400 and status_code ~= 404)
+  if retry_url
     or status_code  == 0 then
     if item_type == "url" then
       abort_item()
@@ -674,7 +725,7 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
     end
     io.stdout:write("Server returned " .. http_stat.statcode .. " (" .. err .. "). Sleeping.\n")
     io.stdout:flush()
-    local maxtries = 8
+    local maxtries = 3
     if not allowed(url["url"]) then
         maxtries = 0
     end
@@ -682,19 +733,15 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
       io.stdout:write("\nI give up...\n")
       io.stdout:flush()
       tries = 0
-      if allowed(url["url"]) then
-        return wget.actions.ABORT
-      else
-        return wget.actions.EXIT
-      end
+      abort_item()
+      return wget.actions.EXIT
     end
     os.execute("sleep " .. math.floor(math.pow(2, tries)))
     tries = tries + 1
     return wget.actions.CONTINUE
   end
 
-  if string.match(url["url"], "^https?://[^/]+%.reddit%.com/api/info%?id=t[0-9]_[a-z0-9]+$")
-    or item_type == "url" then
+  if item_type == "url" then
     return wget.actions.EXIT
   end
 
