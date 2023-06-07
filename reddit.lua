@@ -271,6 +271,10 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
   
   downloaded[url] = true
 
+  if abortgrab then
+    return {}
+  end
+
   local function check(urla)
     if no_more_svc
       and string.match(urla, "^https?://[^/]+/svc/") then
@@ -556,6 +560,11 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         end
         selftext = child["data"]["selftext"]
         checknewurl(child["data"]["permalink"])
+        -- temp
+        if child["data"]["is_video"] then
+          error()
+        end
+        --
         if child["data"]["is_video"] and not child["data"]["secure_media"] then
           io.stdout:write("Video still being processed.\n")
           io.stdout:flush()
@@ -657,6 +666,14 @@ wget.callbacks.write_to_warc = function(url, http_stat)
     print("Not writing to WARC.")
     retry_url = true
     return false
+  end
+  if string.match(url["url"], "/api/info%.json") then
+    local html = read_file(http_stat["local_file"])
+    if string.match(html, "v%.redd%.it")
+      or string.match(html, "reddit_video") then
+      abort_item()
+      return false
+    end
   end
   if string.match(url["url"], "^https?://www%.reddit%.com/") then
     local html = read_file(http_stat["local_file"])
