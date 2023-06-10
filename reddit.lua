@@ -686,9 +686,10 @@ wget.callbacks.write_to_warc = function(url, http_stat)
       return false
     end
   end
-  if string.match(url["url"], "^https?://www%.reddit%.com/") then
+  if string.match(url["url"], "^https?://www%.reddit%.com/")
+    or string.match(url["url"], "^https?://old%.reddit%.com/") then
     local html = read_file(http_stat["local_file"])
-    if (
+    if status_code == 200 and (
       string.match(url["url"], "^https?://[^/]+/r/")
       and (
         not string.match(html, "<title>")
@@ -697,6 +698,9 @@ wget.callbacks.write_to_warc = function(url, http_stat)
     ) or (
       string.match(url["url"], "^https?://[^/]+/svc/")
       and not string.match(html, "</[^<>%s]+>%s*$")
+    ) or (
+      string.match(url["url"], "^https?://old%.reddit%.com/api/morechildren$")
+      and not JSON:decode(html)["success"]
     ) then
       retry_url = true
       return false
