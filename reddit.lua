@@ -639,6 +639,7 @@ wget.callbacks.write_to_warc = function(url, http_stat)
   status_code = http_stat["statcode"]
   logged_response = true
   find_item(url["url"])
+  local html = nil
   if not item_name then
     error("No item name found.")
   end
@@ -668,7 +669,9 @@ wget.callbacks.write_to_warc = function(url, http_stat)
     return false
   end
   if string.match(url["url"], "/api/info%.json") then
-    local html = read_file(http_stat["local_file"])
+    if not html then
+      html = read_file(http_stat["local_file"])
+    end
     local json = load_json_file(html)
     local child_count = 0
     local has_video = false
@@ -688,7 +691,9 @@ wget.callbacks.write_to_warc = function(url, http_stat)
   end
   if string.match(url["url"], "^https?://www%.reddit%.com/")
     or string.match(url["url"], "^https?://old%.reddit%.com/") then
-    local html = read_file(http_stat["local_file"])
+    if not html then
+      html = read_file(http_stat["local_file"])
+    end
     if status_code == 200 and (
       string.match(url["url"], "^https?://[^/]+/r/")
       and (
@@ -705,6 +710,20 @@ wget.callbacks.write_to_warc = function(url, http_stat)
       retry_url = true
       return false
     end
+  end
+  if (
+      string.match(url["url"], "^https?://[^/]+/svc/")
+      and string.match(html, 'level%s*=')
+    ) or (
+      string.match(url["url"], "^https?://www%.reddit%.com/r/")
+      and not string.match(html, "<shreddit%-title")
+    ) then
+    io.stdout:write("Reddit has problems. Pausing 120 seconds and aborting.\n")
+    io.stdout:flush()
+    os.execute("sleep 120")
+    killgrab = true
+    retry_url = true
+    return false
   end
   if abortgrab then
     print("Not writing to WARC.")
