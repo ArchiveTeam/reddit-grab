@@ -716,7 +716,7 @@ wget.callbacks.write_to_warc = function(url, http_stat)
   local is_comments_comment = string.match(url["url"], "^https?://www%.reddit%.com/r/[^/]+/comments/[^/]+/comment/[^/]+/")
   if (
       string.match(url["url"], "^https?://[^/]+/svc/")
-      and string.match(html, 'level%s*=')
+      and string.match(html, 'level%s*=%s*"')
     ) or (
       string.match(url["url"], "^https?://old%.reddit%.com/r/")
       and not string.match(html, 'class="live%-timestamp"')
