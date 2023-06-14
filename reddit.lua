@@ -685,6 +685,7 @@ wget.callbacks.write_to_warc = function(url, http_stat)
       or has_video
       or string.match(html, "v%.redd%.it")
       or string.match(html, "reddit_video") then
+      print("Not writing to WARC.")
       abort_item()
       return false
     end
@@ -707,6 +708,7 @@ wget.callbacks.write_to_warc = function(url, http_stat)
       string.match(url["url"], "^https?://old%.reddit%.com/api/morechildren$")
       and not JSON:decode(html)["success"]
     ) then
+      print("Not writing to WARC.")
       retry_url = true
       return false
     end
@@ -715,6 +717,9 @@ wget.callbacks.write_to_warc = function(url, http_stat)
   if (
       string.match(url["url"], "^https?://[^/]+/svc/")
       and string.match(html, 'level%s*=')
+    ) or (
+      string.match(url["url"], "^https?://old%.reddit%.com/r/")
+      and not string.match(html, 'class="live%-timestamp"')
     ) or (
       string.match(url["url"], "^https?://www%.reddit%.com/r/")
       and (
@@ -727,14 +732,14 @@ wget.callbacks.write_to_warc = function(url, http_stat)
             is_comments_comment
             or item_type ~= "comment"
           )
-          and not string.match(html, "<shreddit%-title")
+          and (
+            not string.match(html, "<shreddit%-title")
+            or not string.match(html, 'id="time%-ago%-separator"')
+          )
         )
       )
     ) then
-    io.stdout:write("Reddit has a problem for URL " .. url["url"] .. ". Pausing 120 seconds and aborting.\n")
-    io.stdout:flush()
-    os.execute("sleep 120")
-    killgrab = true
+    print("Not writing to WARC.")
     retry_url = true
     return false
   end
