@@ -711,11 +711,16 @@ wget.callbacks.write_to_warc = function(url, http_stat)
       return false
     end
   end
+  local comments_comment = string.match(url["url"], "^https?://www%.reddit%.com/r/[^/]+/comments/[^/]+/comment/[^/]+/")
   if (
       string.match(url["url"], "^https?://[^/]+/svc/")
       and string.match(html, 'level%s*=')
     ) or (
       string.match(url["url"], "^https?://www%.reddit%.com/r/")
+      and not comments_comment
+      and not string.match(html, "<shreddit%-redirect")
+    ) or (
+      comments_comment
       and not string.match(html, "<shreddit%-title")
     ) then
     io.stdout:write("Reddit has problems. Pausing 120 seconds and aborting.\n")
