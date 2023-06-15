@@ -123,6 +123,7 @@ allowed = function(url, parenturl)
     or string.match(url, "/%?context=1$")
     or string.match(url, '/"$')
     or string.match(url, "^https?://[^/]+/message/compose")
+    or string.match(url, "www%.reddit%.com/avatar[/]?$")
     or (
       string.match(url, "^https?://gateway%.reddit%.com/")
       and not string.match(url, "/morecomments/")
