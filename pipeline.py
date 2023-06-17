@@ -59,7 +59,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20230615.01'
+VERSION = '20230617.01'
 TRACKER_ID = 'reddit'
 TRACKER_HOST = 'legacy-api.arpa.li'
 MULTI_ITEM_SIZE = 40
@@ -267,7 +267,7 @@ class WgetArgs(object):
             '--warc-compression-use-zstd',
             '--warc-zstd-dict-no-include',
             '--header', 'Accept-Language: en-US;q=0.9, en;q=0.8',
-            '--secure-protocol', 'PFS'
+            '--secure-protocol', 'auto'
         ]
         dict_data = ZstdDict.get_dict()
         with open(os.path.join(item['item_dir'], 'zstdict'), 'wb') as f:
