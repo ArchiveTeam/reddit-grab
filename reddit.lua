@@ -720,6 +720,10 @@ wget.callbacks.write_to_warc = function(url, http_stat)
       and string.match(html, 'level%s*=%s*"')
     ) or (
       string.match(url["url"], "^https?://old%.reddit%.com/r/")
+      and not (
+        string.match(url["url"], "^https?://old%.reddit%.com/r/u_")
+        and status_code == 301
+      )
       and not string.match(html, 'class="live%-timestamp"')
     ) or (
       string.match(url["url"], "^https?://www%.reddit%.com/r/")
@@ -737,6 +741,7 @@ wget.callbacks.write_to_warc = function(url, http_stat)
             not string.match(html, "<shreddit%-title")
             or not string.match(html, 'id="time%-ago%-separator"')
           )
+          and not string.match(html, "<shreddit%-redirect")
         )
       )
     ) then
