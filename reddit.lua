@@ -657,13 +657,18 @@ wget.callbacks.write_to_warc = function(url, http_stat)
     end
   end
   if (
-    http_stat["len"] == 0
-    and status_code == 200
-  ) or (
-    status_code ~= 200
-    and status_code ~= 301
-    and status_code ~= 302
-    and status_code ~= 308
+    (
+      http_stat["len"] == 0
+      and status_code == 200
+    ) or (
+      status_code ~= 200
+      and status_code ~= 301
+      and status_code ~= 302
+      and status_code ~= 308
+    )
+  ) and not (
+    string.match(url["url"], "^https?://[^/]*redditmedia%.com/mediaembed/")
+    and status_code == 404
   ) then
     print("Not writing to WARC.")
     retry_url = true
