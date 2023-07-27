@@ -1,1 +1,1 @@
-FROM atdr.meo.ws/archiveteam/grab-base:gnutls
+FROM atdr.meo.ws/archiveteam/grab-base
