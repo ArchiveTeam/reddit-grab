@@ -1,5 +1,3 @@
-dofile("table_show.lua")
-dofile("urlcode.lua")
 local urlparse = require("socket.url")
 local http = require("socket.http")
 local cjson = require("cjson")
