@@ -1,6 +1,7 @@
 local urlparse = require("socket.url")
 local http = require("socket.http")
 local cjson = require("cjson")
+local utf8 = require("utf8")
 
 local item_names = os.getenv('item_names')
 local item_dir = os.getenv('item_dir')
@@ -283,7 +284,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       url_ = string.gsub(
         url_, "\\[uU]([0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F])",
         function (s)
-          return unicode_codepoint_as_utf8(tonumber(s, 16))
+          return utf8.char(tonumber(s, 16))
         end
       )
     end
