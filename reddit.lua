@@ -2,7 +2,7 @@ dofile("table_show.lua")
 dofile("urlcode.lua")
 local urlparse = require("socket.url")
 local http = require("socket.http")
-JSON = (loadfile "JSON.lua")()
+local cjson = require("cjson")
 
 local item_names = os.getenv('item_names')
 local item_dir = os.getenv('item_dir')
@@ -61,14 +61,6 @@ end
 kill_grab = function(item)
   io.stdout:write("Aborting crawling.\n")
   killgrab = true
-end
-
-load_json_file = function(file)
-  if file then
-    return JSON:decode(file)
-  else
-    return nil
-  end
 end
 
 read_file = function(file)
@@ -547,7 +539,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       end
     end
     if string.match(url, "^https?://www%.reddit.com/api/info%.json%?id=t") then
-      json = load_json_file(html)
+      json = cjson.decode(html)
       if not json or not json["data"] or not json["data"]["children"] then
         io.stdout:write("Could not load JSON.\n")
         io.stdout:flush()
@@ -678,7 +670,7 @@ wget.callbacks.write_to_warc = function(url, http_stat)
     if not html then
       html = read_file(http_stat["local_file"])
     end
-    local json = load_json_file(html)
+    local json = cjson.decode(html)
     local child_count = 0
     local has_video = false
     for _, child in pairs(json["data"]["children"]) do
@@ -712,7 +704,7 @@ wget.callbacks.write_to_warc = function(url, http_stat)
       and not string.match(html, "</[^<>%s]+>%s*$")
     ) or (
       string.match(url["url"], "^https?://old%.reddit%.com/api/morechildren$")
-      and not JSON:decode(html)["success"]
+      and not cjson.decode(html)["success"]
     ) then
       print("Not writing to WARC.")
       retry_url = true
