@@ -4,6 +4,7 @@ from distutils.version import StrictVersion
 import hashlib
 import os.path
 import random
+import re
 from seesaw.config import realize, NumberConfigValue
 from seesaw.externalprocess import ExternalProcess
 from seesaw.item import ItemInterpolation, ItemValue
@@ -39,11 +40,23 @@ if StrictVersion(seesaw.__version__) < StrictVersion('0.8.5'):
 # 1. does not crash with --version, and
 # 2. prints the required version string
 
+class HigherVersion:
+    def __init__(self, expression, min_version):
+        self._expression = re.compile(expression)
+        self._min_version = min_version
+
+    def search(self, text):
+        for result in self._expression.findall(text):
+            if result >= self._min_version:
+                print('Found version {}.'.format(result))
+                return True
+
 WGET_AT = find_executable(
     'Wget+AT',
-    [
+    HigherVersion(
+        r'(GNU Wget 1.[0-9]{2}.[0-9]{1}-at.[0-9]{8}\.[0-9]{2})[^0-9a-zA-Z\.-_]',
         'GNU Wget 1.21.3-at.20230623.01'
-    ],
+    ),
     [
         './wget-at',
         '/home/warrior/data/wget-at'
@@ -59,7 +72,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20230910.05'
+VERSION = '20231017.01'
 TRACKER_ID = 'reddit'
 TRACKER_HOST = 'legacy-api.arpa.li'
 MULTI_ITEM_SIZE = 100
@@ -268,7 +281,7 @@ class WgetArgs(object):
             '--warc-compression-use-zstd',
             '--warc-zstd-dict-no-include',
             '--header', 'Accept-Language: en-US;q=0.9, en;q=0.8',
-            '--secure-protocol', 'TLSv1_3'
+            '--secure-protocol', 'auto'
         ]
         dict_data = ZstdDict.get_dict()
         with open(os.path.join(item['item_dir'], 'zstdict'), 'wb') as f:
