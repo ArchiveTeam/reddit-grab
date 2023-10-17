@@ -54,7 +54,7 @@ class HigherVersion:
 WGET_AT = find_executable(
     'Wget+AT',
     HigherVersion(
-        r'(GNU Wget 1.[0-9]{2}.[0-9]{1}-at.[0-9]{8}\.[0-9]{2})[^0-9a-zA-Z\.-_]',
+        r'(GNU Wget 1\.[0-9]{2}\.[0-9]{1}-at\.[0-9]{8}\.[0-9]{2})[^0-9a-zA-Z\.-_]',
         'GNU Wget 1.21.3-at.20230623.01'
     ),
     [
@@ -72,7 +72,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20231017.01'
+VERSION = '20231017.02'
 TRACKER_ID = 'reddit'
 TRACKER_HOST = 'legacy-api.arpa.li'
 MULTI_ITEM_SIZE = 100
@@ -281,7 +281,7 @@ class WgetArgs(object):
             '--warc-compression-use-zstd',
             '--warc-zstd-dict-no-include',
             '--header', 'Accept-Language: en-US;q=0.9, en;q=0.8',
-            '--secure-protocol', 'auto'
+            '--secure-protocol', 'TLSv1_3'
         ]
         dict_data = ZstdDict.get_dict()
         with open(os.path.join(item['item_dir'], 'zstdict'), 'wb') as f:
