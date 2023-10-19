@@ -89,9 +89,9 @@ allowed = function(url, parenturl)
     return true
   end
 
-  if string.match(url, "^https?://www%.reddit%.com/svc/") then
+  --[[if string.match(url, "^https?://www%.reddit%.com/svc/") then
     return true
-  end
+  end]]
 
   if string.match(url, "'+")
     or string.match(urlparse.unescape(url), "[<>\\%$%^%[%]%(%){}]")
@@ -100,7 +100,10 @@ allowed = function(url, parenturl)
     or string.match(url, "^https?://[^/]*reddit%.com/login")
     or string.match(url, "^https?://[^/]*reddit%.com/register")
     or string.match(url, "^https?://[^/]*reddit%.com/r/undefined/")
-    or string.match(url, "%?sort=")
+    or (
+      string.match(url, "%?sort=")
+      and not string.match(url, "/svc/")
+    )
     or string.match(url, "%?limit=500$")
     or string.match(url, "%?ref=readnext$")
     or string.match(url, "/tailwind%-build%.css$")
@@ -358,6 +361,12 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     check("https://i.redd.it/" .. match)
   end
 
+  if string.match(url, "is_lit_ssr=")
+    and not string.match(url, "/svc/shreddit/more%-comments/") then
+    check(string.gsub(url, "([%?&]is_lit_ssr=)[a-z]+", "%1true"))
+    check(string.gsub(url, "([%?&]is_lit_ssr=)[a-z]+", "%1false"))
+  end
+
   if allowed(url)
     and status_code < 300
     and item_type ~= "url"
@@ -397,8 +406,14 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         if not requested_children[post_data] then
           requested_children[post_data] = true
           print("posting for modechildren with", post_data)
-          table.insert(urls, {url="https://old.reddit.com/api/morechildren",
-                              post_data=post_data})
+          table.insert(urls, {
+            url="https://old.reddit.com/api/morechildren",
+            post_data=post_data,
+            headers={
+              ["Content-Type"]="application/x-www-form-urlencoded; charset=UTF-8",
+              ["X-Requested-With"]="XMLHttpRequest"
+            }
+          })
         end
       end
     --[[elseif string.match(url, "^https?://www%.reddit%.com/r/[^/]+/comments/[^/]")
@@ -525,17 +540,26 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       end
     end
     if string.match(url, "^https?://www%.reddit%.com/svc/") then
-      for src_url, cursor in string.gmatch(html, '<faceplate%-partial[^>]+src="([^"]+)"[^>]*>%s*<input%s+type="hidden"%s+name="cursor"%s+value="([^"]+)"%s*/>') do
-        src_url = string.gsub(src_url, "&amp;", "&")
-        local requested_s = src_url .. cursor
-        if not requested_children[requested_s] then
-          print("posting with cursor", cursor, "to URL", src_url)
-          table.insert(urls, {url=
-            urlparse.absolute(url, src_url),
-            post_data="cursor=" .. string.gsub(cursor, "=", "%%3D")-- .. "&csrf_token=" .. csrf_token
-          })
+      for _, pattern in pairs({
+        '<faceplate%-partial[^>]+src="([^"]+)"[^>]*>%s*<input%s+type="hidden"%s+name="cursor"%s+value="([^"]+)"%s*/>',
+        '<faceplate%-partial[^>]+src="([^"]+)"[^>]*>%s*<!%-%-lit%-node [0-9]%-%->%s*<input%s+type="hidden"%s+name="cursor"%s+value="([^"]+)"%s*/>'
+      }) do
+        for src_url, cursor in string.gmatch(html, pattern) do
+          src_url = string.gsub(src_url, "&amp;", "&")
+          local requested_s = src_url .. cursor
+          if not requested_children[requested_s] then
+            print("posting with cursor", cursor, "to URL", src_url)
+            table.insert(urls, {url=
+              urlparse.absolute(url, src_url),
+              headers={
+                ["content-type"]="application/x-www-form-urlencoded"
+              },
+              post_data="cursor=" .. string.gsub(cursor, "=", "%%3D")-- .. "&csrf_token=" .. csrf_token
+            })
+          end
         end
       end
+      no_more_svc = true
     end
     if string.match(url, "^https?://www%.reddit.com/api/info%.json%?id=t") then
       json = cjson.decode(html)
@@ -569,9 +593,9 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         local id = child["data"]["id"]
         local subreddit = child["data"]["subreddit"]
         if child["kind"] == "t1" then
-          check("https://www.reddit.com/svc/shreddit/comments/" .. subreddit .. "/" .. child["data"]["link_id"] .. "/t1_" .. id .. "?render-mode=partial&shredtop=")
+          --check("https://www.reddit.com/svc/shreddit/comments/" .. subreddit .. "/" .. child["data"]["link_id"] .. "/t1_" .. id .. "?render-mode=partial&shredtop=")
         elseif child["kind"] == "t3" then
-          check("https://www.reddit.com/svc/shreddit/comments/" .. subreddit .. "/t3_" .. id .. "?render-mode=partial")
+          --check("https://www.reddit.com/svc/shreddit/comments/" .. subreddit .. "/t3_" .. id .. "?render-mode=partial")
         else
           io.stdout:write("Kind is not supported.\n")
           io.stdout:flush()
@@ -579,7 +603,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         end
       end
     end
-    no_more_svc = true
+    --no_more_svc = true
     for newurl in string.gmatch(string.gsub(html, "&quot;", '"'), '([^"%s]+)') do
       checknewurl(newurl)
     end
@@ -701,6 +725,7 @@ wget.callbacks.write_to_warc = function(url, http_stat)
     ) or (
       string.match(url["url"], "^https?://[^/]+/svc/")
       and not string.match(html, "</[^<>%s]+>%s*$")
+      and not string.match(html, "<!%-%-/lit%-part%-%->%s*$")
     ) or (
       string.match(url["url"], "^https?://old%.reddit%.com/api/morechildren$")
       and not cjson.decode(html)["success"]
@@ -791,7 +816,7 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
   end]]
   
   if retry_url
-    or status_code  == 0 then
+    or status_code == 0 then
     if item_type == "url" then
       abort_item()
       return wget.actions.EXIT
