@@ -72,7 +72,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20231026.01'
+VERSION = '20231102.01'
 TRACKER_ID = 'reddit'
 TRACKER_HOST = 'legacy-api.arpa.li'
 MULTI_ITEM_SIZE = 100
@@ -374,8 +374,6 @@ pipeline = Pipeline(
             rsync_target_source_path=ItemInterpolation('%(data_dir)s/'),
             rsync_extra_args=[
                 '--recursive',
-                '--partial',
-                '--partial-dir', '.rsync-tmp',
                 '--min-size', '1',
                 '--no-compress',
                 '--compress-level', '0'
