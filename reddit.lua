@@ -739,6 +739,8 @@ wget.callbacks.write_to_warc = function(url, http_stat)
   if (
       string.match(url["url"], "^https?://[^/]+/svc/")
       and string.match(html, 'level%s*=%s*"')
+      and not string.match(html, '<shreddit%-async%-loader[^a-z]')
+      and not string.match(html, '<shreddit%-comment%-tree[^a-z]')
     ) or (
       string.match(url["url"], "^https?://old%.reddit%.com/r/")
       and not (
